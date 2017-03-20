@@ -46,6 +46,8 @@ typedef struct EX_MEM_Reg
 	unsigned int Reg_RT_val;
 	unsigned int WB_reg;
 	unsigned int PC_Next;
+	unsigned int branch;
+	unsigned int branch_target;
 	int ALU_result;
 }EX_MEM;
 
@@ -55,6 +57,7 @@ typedef struct MEM_WB_Reg
 	unsigned int Reg_Wrt;
 	unsigned int Data_Mem_result;
 	unsigned int WB_reg;
+	unsigned int Mem_to_Reg;
 	int ALU_result;
 
 }MEM_WB;
@@ -62,6 +65,8 @@ typedef struct MEM_WB_Reg
 typedef struct PC_Register
 {
 	unsigned int pc;
+	unsigned int pc_src;
+	unsigned int pc_flush;
 }PC_Reg;
 
 #endif
