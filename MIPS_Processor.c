@@ -11,6 +11,9 @@
 
 void IF();
 void ID();
+void EX();
+void MEM();
+void WB();
 
 IF_ID IFID;
 ID_EX IDEX;
@@ -49,6 +52,9 @@ int main()
 	
 	IF();
 	ID();
+	EX();
+	MEM();
+	WB();
 
 	
 	
@@ -93,13 +99,14 @@ void ID()
 	printf("In instruction Decode stage\n");
 	switch(IFID.OP_Code)
 	{
-		//TODO combine cases when it makes sense
+		//TODO: combine cases when it makes sense
+		//TODO: ALU_Op is based on func code; fine for R-format; Other instructions need to add logic
 
 		//R-format
 		case 0x0:
 			printf("Instruction was R-format\n");
 			IDEX_SHADOW.Reg_Dst = 1;
-			IDEX_SHADOW.Reg_Wrt = 0;
+			IDEX_SHADOW.Reg_Wrt = 1;
 			//??? ALU OP => func
 			IDEX_SHADOW.ALU_Op = IFID.func;
 			IDEX_SHADOW.ALU_Src = 0;
@@ -115,7 +122,7 @@ void ID()
 			IDEX_SHADOW.sign_ext_imm = 0;
 			//TODO: PC = PC + 4;
 			break;
-		// branch and trap instructions
+		// branch and trap instructions based on rt value
 		case 0x1:
 			IDEX_SHADOW.ALU_Src;
 			IDEX_SHADOW.ALU_Op;
@@ -283,5 +290,96 @@ void ID()
 		// swr instruction
 		case 0x2E:
 			break;
+	}
+}
+
+void EX()
+{
+	int ALU_A = IDEX.Reg_RS_val;
+	int ALU_B;
+
+	//RegDst Mux
+	if(IDEX.Reg_Dst == 1)
+	{
+		EXMEM_SHADOW.WB_reg = IDEX.reg_RD;
+	}
+	else
+	{
+		EXMEM_SHADOW.WB_reg = IDEX.reg_RT;
+	}
+
+	//ALUSrc Mux
+	if(IDEX.ALU_Src == 1)
+	{
+		ALU_B = IDEX.sign_ext_imm;
+	}
+	else
+	{
+		ALU_B = IDEX.Reg_RT_val;
+	}
+
+	//TODO: ALU-OP is based on func code; what about non R-format instructions
+	//ALU Control
+	switch(IDEX.ALU_Op)
+	{
+		//this is based on the instruction func code
+
+		//add instruction
+		case(0x20):
+			EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
+			break;
+
+	}
+
+
+
+	EXMEM_SHADOW.branch = IDEX.branch;
+	EXMEM_SHADOW.branch_target = IDEX.PC_Next + (IDEX.sign_ext_imm << 2);
+	EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
+	EXMEM_SHADOW.PC_Next = IDEX.PC_Next;
+	EXMEM_SHADOW.Reg_Wrt = IDEX.Reg_Wrt;
+	EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
+	EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
+	EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
+	//TODO: When to set zero flag (branch instructions)
+	EXMEM_SHADOW.zero = 0;
+
+	//Handle Forwarding issues
+		
+}
+
+void MEM()
+{
+	//write data to memory
+	if(EXMEM.Mem_Wrt == 1)
+	{
+		// wtite to memory
+		//memory[EXMEM.ALU_result] = EXMEM.Reg_RT_val
+	}
+
+	if(EXMEM.Mem_Read == 1)
+	{
+		//MEMWB_SHADOW.Data_Mem_result = memory[EXMEM.ALU_result];	
+	}
+	MEMWB_SHADOW.Reg_Wrt = EXMEM.Reg_Wrt;
+	MEMWB_SHADOW.WB_reg = EXMEM.WB_reg;
+	MEMWB_SHADOW.ALU_result = EXMEM.ALU_result;
+	MEMWB_SHADOW.Mem_to_Reg = EXMEM.Mem_to_Reg;
+}
+
+void WB()
+{
+	
+	//do not write to register $zero
+	if( (MEMWB.Reg_Wrt == 1) && (MEMWB.WB_reg != 0) )
+	{
+		if(MEMWB.Mem_to_Reg == 1)
+		{
+			reg[MEMWB.WB_reg] = MEMWB.ALU_result;
+		}
+		else
+		{
+			reg[MEMWB.WB_reg] = MEMWB.Data_Mem_result;
+		}
 	}
 }
