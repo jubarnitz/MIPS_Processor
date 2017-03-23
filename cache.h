@@ -7,7 +7,7 @@
 #define CACHE_SIZE 256
 #define NUM_REGISTERS 32
 
-unsigned int memory[500][500];
+unsigned int memory[500];
 
 unsigned int i_cache[CACHE_SIZE];
 

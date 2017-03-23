@@ -4,6 +4,19 @@
  * Justin Barnitz and Jacob Levine
  *
  */
+
+
+
+/* Probably a better scheme for the ALU OP
+   ALUOp   Action needed by ALU
+
+    00      Addition (for load and store)
+    01      Subtraction (for beq)
+    10      Determined by funct field (R-type instruction)
+    11      Not used
+
+https://cs.nyu.edu/courses/fall01/V22.0436-001/lectures/lecture-16.html
+*/
 #include <stdio.h>
 #include "pipe_reg.h"
 #include "cache.h"
@@ -14,6 +27,7 @@ void ID();
 void EX();
 void MEM();
 void WB();
+void Update();
 
 IF_ID IFID;
 ID_EX IDEX;
@@ -43,20 +57,23 @@ int main()
 	Flush_MEM_WB(MEMWB_ptr);
 
 	init_memory();
-	// TODO: change pc to actual address and not an instruction
-	PC.pc = init_i_cache();
-	init_d_cache();
+	
+	PC.pc = 0;
+	//init_d_cache();
 
 	/*----------  Execute MIPS program  ----------*/
 
 	
-	IF();
-	ID();
-	EX();
-	MEM();
-	WB();
-
-	
+	// Currently there is only 2 instr in memory
+	while(PC.pc < 2)
+	{
+		IF();
+		ID();
+		EX();
+		MEM();
+		WB();
+		Update();
+	}	
 	
 }
 
@@ -71,7 +88,8 @@ void IF()
 	unsigned int jump_mask = 0x3FFFFFF;
 	unsigned int sham_mask = 0x7C0;
 
-	unsigned int instr = PC.pc;
+	unsigned int instr = memory[PC.pc];
+	printf("instruction = 0x%08x\n", instr);
 
 	IFID_SHADOW.OP_Code = (instr & OP_mask) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_mask) >> 21;
@@ -81,8 +99,7 @@ void IF()
 	IFID_SHADOW.func = (instr & func_mask);
 	IFID_SHADOW.imm = (instr & imm_mask);
 	IFID_SHADOW.jmp_addr = (instr & jump_mask);
-
-	//TODO: PC = PC + 4;
+	IFID_SHADOW.PC_Next = PC.pc + 1;
 
 	printf("OP code = 0x%x\n", IFID_SHADOW.OP_Code);
 	printf("RS = %d\n", IFID_SHADOW.reg_RS);
@@ -92,6 +109,18 @@ void IF()
 	printf("func = 0x%x\n", IFID_SHADOW.func);
 	printf("imm = %d\n", IFID_SHADOW.imm);
 	printf("jump addr = 0x%x\n", IFID_SHADOW.jmp_addr);
+
+	// Program Counter Logic
+	if(PC.pc_src)
+	{
+		// go to instruction from branch
+		PC.pc = EXMEM.branch_target;
+	}
+	else
+	{
+		// increment the pc by 1 to next instruction
+		PC.pc = PC.pc + 1;
+	}
 }
 
 void ID()
@@ -382,4 +411,12 @@ void WB()
 			reg[MEMWB.WB_reg] = MEMWB.Data_Mem_result;
 		}
 	}
+}
+
+void Update()
+{
+	IFID = IFID_SHADOW;
+	IDEX = IDEX_SHADOW;
+	EXMEM = EXMEM_SHADOW;
+	MEMWB = MEMWB_SHADOW;
 }

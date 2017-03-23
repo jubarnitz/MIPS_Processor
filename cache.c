@@ -10,7 +10,8 @@
 
 void init_memory()
 {
-
+	memory[0] = 0x01314020; //ADD $t0 $t1 $s1
+	memory[1] = 0x214A0005; //addi $t2 $t2 $0x5
 }
 
 // returns the address of 1st instruction

@@ -7,4 +7,3 @@ LFLAGS = -Wall
 MIPS.out: MIPS_Processor.c flush_reg.c cache.c
 	gcc -o MIPS.out MIPS_Processor.c flush_reg.c cache.c
 
-
