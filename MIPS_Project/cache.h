@@ -19,4 +19,4 @@ void init_memory();
 unsigned int init_i_cache();
 void init_d_cache();
 
-#endif
+#endif // CACHE_H_INCLUDED

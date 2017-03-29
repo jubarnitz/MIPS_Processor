@@ -9,4 +9,4 @@ void Flush_ID_EX(ID_EX *);
 void Flush_EX_MEM(EX_MEM *);
 void Flush_MEM_WB(MEM_WB *);
 
-#endif
+#endif // FLUSH_REG_H_INCLUDED
