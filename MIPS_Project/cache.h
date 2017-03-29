@@ -1,5 +1,5 @@
-#ifndef CACHE_H
-#define CACHE_H
+#ifndef CACHE_H_INCLUDED
+#define CACHE_H_INCLUDED
 
 #include <stdio.h>
 #include "pipe_reg.h"

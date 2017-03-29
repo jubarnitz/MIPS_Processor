@@ -1,5 +1,5 @@
-#ifndef FLUSH_REG_H
-#define FLUSH_REG_H
+#ifndef FLUSH_REG_H_INCLUDED
+#define FLUSH_REG_H_INCLUDED
 
 #include <stdio.h>
 #include "pipe_reg.h"

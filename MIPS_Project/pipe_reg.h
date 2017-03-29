@@ -1,5 +1,5 @@
-#ifndef PIPE_REG_H
-#define PIPE_REG_H
+#ifndef PIPE_REG_H_INCLUDED
+#define PIPE_REG_H_INCLUDED
 
 // pipeline register for Instruction Decode / Instruction Fetch stage
 typedef struct IF_ID_Reg
@@ -69,4 +69,4 @@ typedef struct PC_Register
 	unsigned int pc_flush;
 }PC_Reg;
 
-#endif
+#endif // PIPE_REG_H_INCLUDED

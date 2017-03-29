@@ -9,12 +9,10 @@
 
 /* Probably a better scheme for the ALU OP
    ALUOp   Action needed by ALU
-
     00      Addition (for load and store)
     01      Subtraction (for beq)
     10      Determined by funct field (R-type instruction)
     11      Not used
-
 https://cs.nyu.edu/courses/fall01/V22.0436-001/lectures/lecture-16.html
 */
 #include <stdio.h>
@@ -47,23 +45,23 @@ MEM_WB *MEMWB_ptr = &MEMWB;
 
 
 int main()
-{	
+{
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
-	
+
 	Flush_IF_ID(IFID_ptr);
 	Flush_ID_EX(IDEX_ptr);
 	Flush_EX_MEM(EXMEM_ptr);
 	Flush_MEM_WB(MEMWB_ptr);
 
 	init_memory();
-	
+
 	PC.pc = 0;
 	//init_d_cache();
 
 	/*----------  Execute MIPS program  ----------*/
 
-	
+
 	// Currently there is only 2 instr in memory
 	while(PC.pc < 2)
 	{
@@ -73,8 +71,8 @@ int main()
 		MEM();
 		WB();
 		Update();
-	}	
-	
+	}
+
 }
 
 void IF()
@@ -141,7 +139,7 @@ void ID()
 			IDEX_SHADOW.ALU_Src = 0;
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.Mem_Read = 0;
-			IDEX_SHADOW.Mem_Wrt = 0;		
+			IDEX_SHADOW.Mem_Wrt = 0;
 			IDEX_SHADOW.Mem_to_Reg = 0;
 			IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
 			IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
@@ -374,7 +372,7 @@ void EX()
 	EXMEM_SHADOW.zero = 0;
 
 	//Handle Forwarding issues
-		
+
 }
 
 void MEM()
@@ -388,7 +386,7 @@ void MEM()
 
 	if(EXMEM.Mem_Read == 1)
 	{
-		//MEMWB_SHADOW.Data_Mem_result = memory[EXMEM.ALU_result];	
+		//MEMWB_SHADOW.Data_Mem_result = memory[EXMEM.ALU_result];
 	}
 	MEMWB_SHADOW.Reg_Wrt = EXMEM.Reg_Wrt;
 	MEMWB_SHADOW.WB_reg = EXMEM.WB_reg;
@@ -398,7 +396,7 @@ void MEM()
 
 void WB()
 {
-	
+
 	//do not write to register $zero
 	if( (MEMWB.Reg_Wrt == 1) && (MEMWB.WB_reg != 0) )
 	{
