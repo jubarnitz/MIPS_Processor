@@ -33,6 +33,7 @@ typedef struct ID_EX_Reg
 	unsigned int PC_Next;
 	unsigned int branch;
 	unsigned int OP_Code;
+	unsigned int sham;
 	int sign_ext_imm;
 } ID_EX;
 
@@ -49,6 +50,7 @@ typedef struct EX_MEM_Reg
 	unsigned int PC_Next;
 	unsigned int branch;
 	unsigned int branch_target;
+	// ??? should this be unsigned int?
 	int ALU_result;
 }EX_MEM;
 
@@ -59,6 +61,7 @@ typedef struct MEM_WB_Reg
 	unsigned int Data_Mem_result;
 	unsigned int WB_reg;
 	unsigned int Mem_to_Reg;
+	// ??? should this be unsigned int?
 	int ALU_result;
 
 }MEM_WB;

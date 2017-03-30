@@ -41,10 +41,10 @@ int main()
 	while(clock_cycle < 10)
 	{
 		IF();
+		WB();
 		ID();
 		EX();
 		MEM();
-		WB();
 		Update();
 	}
 
@@ -109,7 +109,7 @@ void ID()
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.Mem_Read = 0;
 			IDEX_SHADOW.Mem_Wrt = 0;
-			IDEX_SHADOW.Mem_to_Reg = 0;
+			IDEX_SHADOW.Mem_to_Reg = 1;
 			IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
 			IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
 			IDEX_SHADOW.reg_RS = IFID.reg_RS;
@@ -117,7 +117,9 @@ void ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = 0;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.sham = IFID.sham;
 			break;
+
 		// branch and trap instructions based on rt value
 		case 0x1:
 			IDEX_SHADOW.ALU_Src;
@@ -220,7 +222,7 @@ void ID()
 			IDEX_SHADOW.ALU_Op = 0;
 			IDEX_SHADOW.Reg_Dst = 0;
 			IDEX_SHADOW.Reg_Wrt = 1;
-			IDEX_SHADOW.Mem_to_Reg = 0;
+			IDEX_SHADOW.Mem_to_Reg = 1;
 			IDEX_SHADOW.Mem_Read = 0;
 			IDEX_SHADOW.Mem_Wrt = 0;
 			IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
@@ -247,11 +249,41 @@ void ID()
 		// sltiu instruction
 		case 0xB:
 			break;
-		// andi instruction
-		case 0xC:
+		case 0xC: // andi instruction
+		    IDEX_SHADOW.ALU_Src = 1;
+		    IDEX_SHADOW.ALU_Op = 2;
+		    IDEX_SHADOW.Reg_Dst = 0;
+		    IDEX_SHADOW.Reg_Wrt = 1;
+		    IDEX_SHADOW.Mem_to_Reg = 1;
+		    IDEX_SHADOW.Mem_Read = 0;
+		    IDEX_SHADOW.Mem_Wrt = 0;
+		    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+		    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+		    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.branch = 0;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.OP_Code = 0xC;
 			break;
-		// ori instruction
-		case 0xD:
+		case 0xD: // ori instruction
+		    IDEX_SHADOW.ALU_Src = 1;
+		    IDEX_SHADOW.ALU_Op = 3;
+		    IDEX_SHADOW.Reg_Dst = 0;
+		    IDEX_SHADOW.Reg_Wrt = 1;
+		    IDEX_SHADOW.Mem_to_Reg = 1;
+		    IDEX_SHADOW.Mem_Read = 0;
+		    IDEX_SHADOW.Mem_Wrt = 0;
+		    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+		    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+		    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.branch = 0;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.OP_Code = 0xD;
 			break;
 		// xori instruction
 		case 0xE:
@@ -271,6 +303,16 @@ void ID()
 		// bgtzl instruction
 		case 0x17:
 			break;
+        case 0x1C: //count leading ones & count leading zeros
+            if(IFID.func == 0x21) //clo instruction
+            {
+
+            }
+            else if(IFID.func == 0x20) //clz instruction
+            {
+
+            }
+            break;
 		// lb instruction
 		case 0x20:
 			break;
@@ -344,6 +386,8 @@ void EX()
     ALUOp   Action needed by ALU
     00      Addition (for load and store)
     01      Subtraction (for beq)
+    10      And
+    11      Or
     */
 	// Check to see if R-format
 	if(IDEX.OP_Code == 0)
@@ -351,10 +395,21 @@ void EX()
         switch(IDEX.ALU_Op)
         {
             //this is based on the instruction func code
-
+            case(0x0): // shift left logical
+                EXMEM_SHADOW.ALU_result = ALU_B << IDEX.sham;
+                break;
             case(0x20): //add instruction
             case(0x21): //addu instruction
                 EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
+                break;
+            case(0x24): //and instruction
+                EXMEM_SHADOW.ALU_result = ALU_A & ALU_B;
+                break;
+            case(0x25): // or instruction
+                EXMEM_SHADOW.ALU_result = ALU_A | ALU_B;
+                break;
+            case(0x27): //nor instruction
+                EXMEM_SHADOW.ALU_result = ~(ALU_A | ALU_B);
                 break;
 
         }
@@ -364,11 +419,17 @@ void EX()
     {
         switch(IDEX.ALU_Op)
         {
-            case(0):
+            case(0): //add
                 EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
                 break;
-            case(1):
+            case(1): //subract
                 EXMEM_SHADOW.ALU_result = ALU_A - ALU_B;
+                break;
+            case(2): // bitwise and
+                EXMEM_SHADOW.ALU_result = ALU_A & ALU_B;
+                break;
+            case(3): // bitwise or
+                EXMEM_SHADOW.ALU_result = ALU_A | ALU_B;
                 break;
         }
     }
