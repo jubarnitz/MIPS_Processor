@@ -19,7 +19,7 @@ https://cs.nyu.edu/courses/fall01/V22.0436-001/lectures/lecture-16.html
 
 int main()
 {
-	int clock_cycle = 0;
+	clock_cycle = 0;
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
 
@@ -29,15 +29,16 @@ int main()
 	Flush_MEM_WB(MEMWB_ptr);
 
 	init_memory();
+	init_reg();
 
-	PC.pc = 0;
+	PC.pc = memory[5];
 	//init_d_cache();
 
 	/*----------  Execute MIPS program  ----------*/
 
 
 	// Currently there is only 2 instr in memory
-	while(PC.pc < 2)
+	while(clock_cycle < 10)
 	{
 		IF();
 		ID();
@@ -45,22 +46,14 @@ int main()
 		MEM();
 		WB();
 		Update();
-		clock_cycle++;
 	}
 
 }
 
 void IF()
 {
-	unsigned int rs_mask = 0x03E00000;
-	unsigned int rt_mask = 0x1F0000;
-	unsigned int rd_mask = 0xF800;
-	unsigned int func_mask = 0x3F;
-	short int imm_mask = 0xFFFF;
-	unsigned int jump_mask = 0x3FFFFFF;
-	unsigned int sham_mask = 0x7C0;
-
 	unsigned int instr = memory[PC.pc];
+	printf("In Instruction Fetch stage\n");
 	printf("instruction = 0x%08x\n", instr);
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
@@ -73,6 +66,7 @@ void IF()
 	IFID_SHADOW.jmp_addr = (instr & jump_MASK);
 	IFID_SHADOW.PC_Next = PC.pc + 1;
 
+    /*
 	printf("OP code = 0x%x\n", IFID_SHADOW.OP_Code);
 	printf("RS = %d\n", IFID_SHADOW.reg_RS);
 	printf("RT = %d\n", IFID_SHADOW.reg_RT);
@@ -81,6 +75,7 @@ void IF()
 	printf("func = 0x%x\n", IFID_SHADOW.func);
 	printf("imm = %d\n", IFID_SHADOW.imm);
 	printf("jump addr = 0x%x\n", IFID_SHADOW.jmp_addr);
+	*/
 
 	// Program Counter Logic
 	if(PC.pc_src)
@@ -97,6 +92,7 @@ void IF()
 
 void ID()
 {
+	//TODO: write to dst reg
 	printf("In instruction Decode stage\n");
 	switch(IFID.OP_Code)
 	{
@@ -104,7 +100,7 @@ void ID()
 
 		//R-format
 		case 0x0:
-			printf("Instruction was R-format\n");
+			//printf("Instruction was R-format\n");
 			IDEX_SHADOW.Reg_Dst = 1;
 			IDEX_SHADOW.Reg_Wrt = 1;
 			IDEX_SHADOW.OP_Code = IFID.OP_Code;
@@ -120,7 +116,7 @@ void ID()
 			IDEX_SHADOW.reg_RT = IFID.reg_RT;
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = 0;
-			//TODO: PC = PC + 4;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			break;
 		// branch and trap instructions based on rt value
 		case 0x1:
@@ -218,11 +214,32 @@ void ID()
 		// bgtz instruction
 		case 0x7:
 			break;
-		// addi instruction
-		case 0x8:
-			break;
-		// addiu instruction
-		case 0x9:
+		case 0x8: // addi instruction
+		case 0x9: // addiu instruction
+            IDEX_SHADOW.ALU_Src = 1;
+			IDEX_SHADOW.ALU_Op = 0;
+			IDEX_SHADOW.Reg_Dst = 0;
+			IDEX_SHADOW.Reg_Wrt = 1;
+			IDEX_SHADOW.Mem_to_Reg = 0;
+			IDEX_SHADOW.Mem_Read = 0;
+			IDEX_SHADOW.Mem_Wrt = 0;
+			IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+			IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+			IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.branch = 0;
+			if(IFID.OP_Code == 0x8)
+			{
+			    IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			    IDEX_SHADOW.OP_Code = 0x8;
+			}
+			else if(IFID.OP_Code == 0x9)
+			{
+			    IDEX_SHADOW.sign_ext_imm = (unsigned int)IFID.imm;
+			    IDEX_SHADOW.OP_Code = 0x9;
+			}
 			break;
 		// slti instruction
 		case 0xA:
@@ -298,6 +315,8 @@ void EX()
 	int ALU_A = IDEX.Reg_RS_val;
 	int ALU_B;
 
+	printf("In Execute stage\n");
+
 	//RegDst Mux
 	if(IDEX.Reg_Dst == 1)
 	{
@@ -333,10 +352,11 @@ void EX()
         {
             //this is based on the instruction func code
 
-            //add instruction
-            case(0x20):
+            case(0x20): //add instruction
+            case(0x21): //addu instruction
                 EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
                 break;
+
         }
     }
     //I or J instruction
@@ -372,6 +392,8 @@ void EX()
 
 void MEM()
 {
+	printf("In Memory stage\n");
+
 	//write data to memory
 	if(EXMEM.Mem_Wrt == 1)
 	{
@@ -391,6 +413,7 @@ void MEM()
 
 void WB()
 {
+    printf("In Write Back stage\n");
 
 	//do not write to register $zero
 	if( (MEMWB.Reg_Wrt == 1) && (MEMWB.WB_reg != 0) )
@@ -407,9 +430,11 @@ void WB()
 }
 
 void Update()
-{
+{\
 	IFID = IFID_SHADOW;
 	IDEX = IDEX_SHADOW;
 	EXMEM = EXMEM_SHADOW;
 	MEMWB = MEMWB_SHADOW;
+	clock_cycle++;
+	printf("Clock Cycle: %d\n", clock_cycle);
 }

@@ -224,7 +224,8 @@ void init_reg()
 	{
 		reg[i] = 0;
 	}
-	// todo -> init sp, gp and ra
+	reg[29] = memory[0];
+	reg[30] = memory[1];
 }
 
 void Initialize_Simulation_Memory(void){

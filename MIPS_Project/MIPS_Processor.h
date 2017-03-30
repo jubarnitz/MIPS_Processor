@@ -22,6 +22,8 @@ void MEM();
 void WB();
 void Update();
 
+int clock_cycle;
+
 IF_ID IFID;
 ID_EX IDEX;
 EX_MEM EXMEM;
