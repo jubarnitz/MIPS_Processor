@@ -34,6 +34,7 @@
 		<Unit filename="MIPS_Processor.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="MIPS_Processor.h" />
 		<Unit filename="cache.c">
 			<Option compilerVar="CC" />
 		</Unit>

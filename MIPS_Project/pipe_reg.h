@@ -32,6 +32,7 @@ typedef struct ID_EX_Reg
 	unsigned int reg_RD;
 	unsigned int PC_Next;
 	unsigned int branch;
+	unsigned int OP_Code;
 	int sign_ext_imm;
 } ID_EX;
 

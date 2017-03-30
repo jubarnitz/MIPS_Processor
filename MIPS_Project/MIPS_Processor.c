@@ -8,44 +8,18 @@
 
 
 /* Probably a better scheme for the ALU OP
-   ALUOp   Action needed by ALU
+    if Instruction is R-format then the ALUOp will be based on the func
+    otherwise:
+    ALUOp   Action needed by ALU
     00      Addition (for load and store)
     01      Subtraction (for beq)
-    10      Determined by funct field (R-type instruction)
-    11      Not used
 https://cs.nyu.edu/courses/fall01/V22.0436-001/lectures/lecture-16.html
 */
-#include <stdio.h>
-#include "pipe_reg.h"
-#include "cache.h"
-#include "flush_reg.h"
-
-void IF();
-void ID();
-void EX();
-void MEM();
-void WB();
-void Update();
-
-IF_ID IFID;
-ID_EX IDEX;
-EX_MEM EXMEM;
-MEM_WB MEMWB;
-PC_Reg PC;
-IF_ID IFID_SHADOW;
-ID_EX IDEX_SHADOW;
-EX_MEM EXMEM_SHADOW;
-MEM_WB MEMWB_SHADOW;
-PC_Reg PC_SHADOW;
-
-IF_ID *IFID_ptr = &IFID;
-ID_EX *IDEX_ptr = &IDEX;
-EX_MEM *EXMEM_ptr = &EXMEM;
-MEM_WB *MEMWB_ptr = &MEMWB;
-
+#include "MIPS_Processor.h"
 
 int main()
 {
+	int clock_cycle = 0;
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
 
@@ -71,13 +45,13 @@ int main()
 		MEM();
 		WB();
 		Update();
+		clock_cycle++;
 	}
 
 }
 
 void IF()
 {
-	unsigned int OP_mask = 0xFC000000;
 	unsigned int rs_mask = 0x03E00000;
 	unsigned int rt_mask = 0x1F0000;
 	unsigned int rd_mask = 0xF800;
@@ -89,14 +63,14 @@ void IF()
 	unsigned int instr = memory[PC.pc];
 	printf("instruction = 0x%08x\n", instr);
 
-	IFID_SHADOW.OP_Code = (instr & OP_mask) >> 26;
-	IFID_SHADOW.reg_RS = (instr & rs_mask) >> 21;
-	IFID_SHADOW.reg_RT = (instr & rt_mask) >> 16;
-	IFID_SHADOW.reg_RD = (instr & rd_mask) >> 11;
-	IFID_SHADOW.sham = (instr & sham_mask) >> 6;
-	IFID_SHADOW.func = (instr & func_mask);
-	IFID_SHADOW.imm = (instr & imm_mask);
-	IFID_SHADOW.jmp_addr = (instr & jump_mask);
+	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
+	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;
+	IFID_SHADOW.reg_RT = (instr & rt_MASK) >> 16;
+	IFID_SHADOW.reg_RD = (instr & rd_MASK) >> 11;
+	IFID_SHADOW.sham = (instr & sham_MASK) >> 6;
+	IFID_SHADOW.func = (instr & func_MASK);
+	IFID_SHADOW.imm = (instr & imm_MASK);
+	IFID_SHADOW.jmp_addr = (instr & jump_MASK);
 	IFID_SHADOW.PC_Next = PC.pc + 1;
 
 	printf("OP code = 0x%x\n", IFID_SHADOW.OP_Code);
@@ -127,14 +101,13 @@ void ID()
 	switch(IFID.OP_Code)
 	{
 		//TODO: combine cases when it makes sense
-		//TODO: ALU_Op is based on func code; fine for R-format; Other instructions need to add logic
 
 		//R-format
 		case 0x0:
 			printf("Instruction was R-format\n");
 			IDEX_SHADOW.Reg_Dst = 1;
 			IDEX_SHADOW.Reg_Wrt = 1;
-			//??? ALU OP => func
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			IDEX_SHADOW.ALU_Op = IFID.func;
 			IDEX_SHADOW.ALU_Src = 0;
 			IDEX_SHADOW.branch = 0;
@@ -345,18 +318,40 @@ void EX()
 		ALU_B = IDEX.Reg_RT_val;
 	}
 
-	//TODO: ALU-OP is based on func code; what about non R-format instructions
-	//ALU Control
-	switch(IDEX.ALU_Op)
-	{
-		//this is based on the instruction func code
+	// ALU Control
+	/*
+	if Instruction is R-format then the ALUOp will be based on the func
+    otherwise:
+    ALUOp   Action needed by ALU
+    00      Addition (for load and store)
+    01      Subtraction (for beq)
+    */
+	// Check to see if R-format
+	if(IDEX.OP_Code == 0)
+    {
+        switch(IDEX.ALU_Op)
+        {
+            //this is based on the instruction func code
 
-		//add instruction
-		case(0x20):
-			EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
-			break;
-
-	}
+            //add instruction
+            case(0x20):
+                EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
+                break;
+        }
+    }
+    //I or J instruction
+    else
+    {
+        switch(IDEX.ALU_Op)
+        {
+            case(0):
+                EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
+                break;
+            case(1):
+                EXMEM_SHADOW.ALU_result = ALU_A - ALU_B;
+                break;
+        }
+    }
 
 
 
