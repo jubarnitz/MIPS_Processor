@@ -22,5 +22,6 @@ void init_memory();
 unsigned int init_i_cache();
 void init_d_cache();
 void Initialize_Simulation_Memory();
+void init_reg();
 
 #endif // CACHE_H_INCLUDED
