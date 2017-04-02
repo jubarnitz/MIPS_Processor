@@ -37,8 +37,8 @@ int main()
 	/*----------  Execute MIPS program  ----------*/
 
 
-	// Currently there is only 2 instr in memory
-	while(clock_cycle < 10)
+	// When the pc counter goes to zero, the program has completed
+	while(PC.pc != 0)
 	{
 		IF();
 		WB();
@@ -123,12 +123,72 @@ void ID()
 
 		// branch and trap instructions based on rt value
 		case 0x1:
-			break;
-		// j instruction
-		case 0x2:
-			break;
-		// jal instruction
-		case 0x3:
+            switch(IFID.reg_RT)
+            {
+                // bltz instruction
+                case 0x0:
+                    IDEX_SHADOW.Reg_Dst = 0;
+                    IDEX_SHADOW.Reg_Wrt = 0;
+                    IDEX_SHADOW.OP_Code = IFID.OP_Code;
+                    IDEX_SHADOW.ALU_Op = 7;
+                    IDEX_SHADOW.ALU_Src = 0;
+                    IDEX_SHADOW.branch = 1;
+                    IDEX_SHADOW.Mem_Read = 0;
+                    IDEX_SHADOW.Mem_Wrt = 0;
+                    IDEX_SHADOW.Mem_to_Reg = 0;
+                    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+                    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+                    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+                    IDEX_SHADOW.reg_RT = IFID.reg_RT;
+                    IDEX_SHADOW.reg_RD = IFID.reg_RD;
+                    IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+                    IDEX_SHADOW.PC_Next = IFID.PC_Next;
+                    break;
+                // bgez instruction
+                case 0x1:
+                    /*IDEX_SHADOW.Reg_Dst = 0;
+                    IDEX_SHADOW.Reg_Wrt = 0;
+                    IDEX_SHADOW.OP_Code = IFID.OP_Code;
+                    IDEX_SHADOW.ALU_Op = 1;
+                    IDEX_SHADOW.ALU_Src = 0;
+                    IDEX_SHADOW.branch = 1;
+                    IDEX_SHADOW.Mem_Read = 0;
+                    IDEX_SHADOW.Mem_Wrt = 0;
+                    IDEX_SHADOW.Mem_to_Reg = 0;
+                    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+                    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+                    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+                    IDEX_SHADOW.reg_RT = IFID.reg_RT;
+                    IDEX_SHADOW.reg_RD = IFID.reg_RD;
+                    IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+                    IDEX_SHADOW.PC_Next = IFID.PC_Next;*/
+                    break;
+                // bltzal instruction
+                case 0x10:
+                    break;
+                // bgezal instruction
+                case 0x11:
+                    break;
+            }
+            break;
+		case 0x2: // j instruction
+		case 0x3: // jal instruction
+			IDEX_SHADOW.Reg_Dst = 0;
+			IDEX_SHADOW.Reg_Wrt = (IFID.OP_Code == 0x2) ? 0 : 1;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
+			IDEX_SHADOW.ALU_Op = 0;
+			IDEX_SHADOW.ALU_Src = 0;
+			IDEX_SHADOW.branch = 1;
+			IDEX_SHADOW.Mem_Read = 0;
+			IDEX_SHADOW.Mem_Wrt = 0;
+			IDEX_SHADOW.Mem_to_Reg = 0;
+			IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+			IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+			IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = 31; // 31 is the $ra register (for jal)
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.sign_ext_imm = IFID.jmp_addr;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			break;
 		// beq instruction
 		case 0x4:
@@ -151,6 +211,22 @@ void ID()
 			break;
 		// bne instruction
 		case 0x5:
+			IDEX_SHADOW.Reg_Dst = 0;
+			IDEX_SHADOW.Reg_Wrt = 0;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
+			IDEX_SHADOW.ALU_Op = 4;
+			IDEX_SHADOW.ALU_Src = 0;
+			IDEX_SHADOW.branch = 1;
+			IDEX_SHADOW.Mem_Read = 0;
+			IDEX_SHADOW.Mem_Wrt = 0;
+			IDEX_SHADOW.Mem_to_Reg = 0;
+			IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+			IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+			IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			break;
 		// blez instruction
 		case 0x6:
@@ -270,7 +346,7 @@ void ID()
 		// lui instruction
 		case 0xF:
 		    IDEX_SHADOW.ALU_Src = 1;
-		    IDEX_SHADOW.ALU_Op = 0; // need to double-check this value
+		    IDEX_SHADOW.ALU_Op = 2;
 		    IDEX_SHADOW.Reg_Dst = 0;
 		    IDEX_SHADOW.Reg_Wrt = 1;
 		    IDEX_SHADOW.Mem_to_Reg = 0;
@@ -283,7 +359,7 @@ void ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.branch = 0;
-			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.sign_ext_imm = ((int)IFID.imm) << 16;
 			IDEX_SHADOW.OP_Code = 0xF;
 			break;
 		// beql instruction
@@ -437,7 +513,23 @@ void EX()
 
         }
     }
-    //I or J instruction
+    //J instruction
+    else if (IDEX.OP_Code == 2 || IDEX.OP_Code == 3)
+    {
+        EXMEM_SHADOW.branch = IDEX.branch;
+        EXMEM_SHADOW.branch_target = (IDEX.PC_Next & 0xF0000000) | (IDEX.sign_ext_imm << 2);
+        EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
+        EXMEM_SHADOW.PC_Next = IDEX.PC_Next;
+        EXMEM_SHADOW.ALU_result = IDEX.PC_Next; // so we can save the addr of the next inst in the WB stage
+        EXMEM_SHADOW.Reg_Wrt = IDEX.Reg_Wrt;
+        EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
+        EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
+        EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
+        //Set zero flag to 1 so we take the branch
+        EXMEM_SHADOW.zero = 1;
+
+    }
+    //I instruction
     else
     {
         switch(IDEX.ALU_Op)
@@ -456,6 +548,9 @@ void EX()
                 break;
             case(4): // bitwise xor
                 EXMEM_SHADOW.ALU_result = ALU_A ^ ALU_B;
+                break;
+            case(7): // set on less than
+                EXMEM_SHADOW.ALU_result = ALU_A < ALU_B;
                 break;
         }
     }
@@ -517,7 +612,7 @@ void WB()
 }
 
 void Update()
-{\
+{
 	IFID = IFID_SHADOW;
 	IDEX = IDEX_SHADOW;
 	EXMEM = EXMEM_SHADOW;
