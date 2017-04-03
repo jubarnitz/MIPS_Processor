@@ -52,6 +52,15 @@ int main()
 
 void IF()
 {
+    // Branch Logic
+	//PC.pc_src = IDEX.branch; //we're going to do it this way
+	PC.pc_src = EXMEM.branch & EXMEM.zero;
+	if(PC.pc_src)
+	{
+		// go to instruction from branch
+		PC.pc = EXMEM.branch_target;
+	}
+
 	unsigned int instr = memory[PC.pc];
 	printf("In Instruction Fetch stage\n");
 	printf("instruction = 0x%08x\n", instr);
@@ -77,18 +86,9 @@ void IF()
 	printf("jump addr = 0x%x\n", IFID_SHADOW.jmp_addr);
 	*/
 
-	// Program Counter Logic
-	PC.pc_src = EXMEM.branch & EXMEM.zero;
-	if(PC.pc_src)
-	{
-		// go to instruction from branch
-		PC.pc = EXMEM.branch_target;
-	}
-	else
-	{
-		// increment the pc by 1 to next instruction
-		PC.pc = PC.pc + 1;
-	}
+
+    // increment the pc by 1 to next instruction
+	PC.pc = PC.pc + 1;
 }
 
 void ID()
@@ -144,31 +144,8 @@ void ID()
                     IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
                     IDEX_SHADOW.PC_Next = IFID.PC_Next;
                     break;
-                // bgez instruction
-                case 0x1:
-                    /*IDEX_SHADOW.Reg_Dst = 0;
-                    IDEX_SHADOW.Reg_Wrt = 0;
-                    IDEX_SHADOW.OP_Code = IFID.OP_Code;
-                    IDEX_SHADOW.ALU_Op = 1;
-                    IDEX_SHADOW.ALU_Src = 0;
-                    IDEX_SHADOW.branch = 1;
-                    IDEX_SHADOW.Mem_Read = 0;
-                    IDEX_SHADOW.Mem_Wrt = 0;
-                    IDEX_SHADOW.Mem_to_Reg = 0;
-                    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
-                    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
-                    IDEX_SHADOW.reg_RS = IFID.reg_RS;
-                    IDEX_SHADOW.reg_RT = IFID.reg_RT;
-                    IDEX_SHADOW.reg_RD = IFID.reg_RD;
-                    IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
-                    IDEX_SHADOW.PC_Next = IFID.PC_Next;*/
-                    break;
-                // bltzal instruction
-                case 0x10:
-                    break;
-                // bgezal instruction
-                case 0x11:
-                    break;
+                default:
+                    printf("Error: OpCode 1 instruction not implemented\n");
             }
             break;
 		case 0x2: // j instruction
@@ -197,7 +174,6 @@ void ID()
 			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			IDEX_SHADOW.ALU_Op = 1;
 			IDEX_SHADOW.ALU_Src = 0;
-			IDEX_SHADOW.branch = 1;
 			IDEX_SHADOW.Mem_Read = 0;
 			IDEX_SHADOW.Mem_Wrt = 0;
 			IDEX_SHADOW.Mem_to_Reg = 0;
@@ -208,6 +184,10 @@ void ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            if (IDEX_SHADOW.Reg_RS_val == IDEX_SHADOW.Reg_RT_val)
+                IDEX_SHADOW.branch = 1;
+            else
+                IDEX_SHADOW.branch = 0;
 			break;
 		// bne instruction
 		case 0x5:
@@ -216,7 +196,6 @@ void ID()
 			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			IDEX_SHADOW.ALU_Op = 4;
 			IDEX_SHADOW.ALU_Src = 0;
-			IDEX_SHADOW.branch = 1;
 			IDEX_SHADOW.Mem_Read = 0;
 			IDEX_SHADOW.Mem_Wrt = 0;
 			IDEX_SHADOW.Mem_to_Reg = 0;
@@ -227,6 +206,10 @@ void ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            if (IDEX_SHADOW.Reg_RS_val != IDEX_SHADOW.Reg_RT_val)
+                IDEX_SHADOW.branch = 1;
+            else
+                IDEX_SHADOW.branch = 0;
 			break;
 		// blez instruction
 		case 0x6:
@@ -343,7 +326,7 @@ void ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xE;
 			break;
-		// lui instruction
+		// lui instruction -- I need to double check this one - Jake
 		case 0xF:
 		    IDEX_SHADOW.ALU_Src = 1;
 		    IDEX_SHADOW.ALU_Op = 2;
@@ -362,37 +345,6 @@ void ID()
 			IDEX_SHADOW.sign_ext_imm = ((int)IFID.imm) << 16;
 			IDEX_SHADOW.OP_Code = 0xF;
 			break;
-		// beql instruction
-		case 0x14:
-			break;
-		// bnel instruction
-		case 0x15:
-			break;
-		// blezl instruction
-		case 0x16:
-			break;
-		// bgtzl instruction
-		case 0x17:
-			break;
-        case 0x1C: //count leading ones & count leading zeros
-            if(IFID.func == 0x21) //clo instruction
-            {
-
-            }
-            else if(IFID.func == 0x20) //clz instruction
-            {
-
-            }
-            break;
-		// lb instruction
-		case 0x20:
-			break;
-		// lh instruction
-		case 0x21:
-			break;
-		// lwl instruction
-		case 0x22:
-			break;
 		// lw instruction
 		case 0x23:
 			break;
@@ -402,23 +354,14 @@ void ID()
 		// lhu instruction
 		case 0x25:
 			break;
-		// lwr instruction
-		case 0x26:
-			break;
 		// sb instruction
 		case 0x28:
 			break;
 		// sh instruction
 		case 0x29:
 			break;
-		// swl instruction
-		case 0x2A:
-			break;
 		// sw instruction
 		case 0x2B:
-			break;
-		// swr instruction
-		case 0x2E:
 			break;
 	}
 }
@@ -486,10 +429,14 @@ void EX()
                 EXMEM_SHADOW.ALU_result = (int)ALU_B >> ALU_A;
                 break;
             case(0x20): //add instruction
+                EXMEM_SHADOW.ALU_result = (int)ALU_A + (int)ALU_B;
+                break;
             case(0x21): //addu instruction
                 EXMEM_SHADOW.ALU_result = ALU_A + ALU_B;
                 break;
             case(0x22): // subtract instruction
+                EXMEM_SHADOW.ALU_result = (int)ALU_A - (int)ALU_B;
+                break;
             case(0x23): // subu
                 EXMEM_SHADOW.ALU_result = ALU_A - ALU_B;
             case(0x24): //and instruction
@@ -525,7 +472,7 @@ void EX()
         EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
         EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
         EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
-        //Set zero flag to 1 so we take the branch
+        //Set zero flag to 1 so we take the branch (a.k.a. the jump)
         EXMEM_SHADOW.zero = 1;
 
     }
