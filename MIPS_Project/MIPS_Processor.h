@@ -15,6 +15,14 @@
 #define jump_MASK 0x3FFFFFF
 #define sham_MASK 0x7C0
 
+#define BIG_END_BYTE_0 0xff000000
+#define BIG_END_BYTE_1 0x00ff0000
+#define BIG_END_BYTE_2 0x0000ff00
+#define BIG_END_BYTE_3 0x000000ff
+
+#define BIG_END_HALFWORD_0 0xffff0000
+#define BIG_END_HALFWORD_1 0x0000ffff
+
 void IF();
 void ID();
 void EX();

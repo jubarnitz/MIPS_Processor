@@ -50,6 +50,9 @@ typedef struct EX_MEM_Reg
 	unsigned int PC_Next;
 	unsigned int branch;
 	unsigned int branch_target;
+	unsigned int OP_Code;
+	unsigned int which_byte;
+	unsigned int which_half;
 	// ??? should this be unsigned int?
 	int ALU_result;
 }EX_MEM;

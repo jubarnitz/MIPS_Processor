@@ -342,11 +342,28 @@ void ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.branch = 0;
-			IDEX_SHADOW.sign_ext_imm = ((int)IFID.imm) << 16;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xF;
 			break;
 		// lw instruction
 		case 0x23:
+		    IDEX_SHADOW.ALU_Src = 1;
+		    IDEX_SHADOW.ALU_Op = 0;
+		    IDEX_SHADOW.Reg_Dst = 0;
+		    IDEX_SHADOW.Reg_Wrt = 1;
+		    IDEX_SHADOW.Mem_to_Reg = 1;
+		    IDEX_SHADOW.Mem_Read = 1;
+		    IDEX_SHADOW.Mem_Wrt = 0;
+		    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+		    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+		    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.branch = 0;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.OP_Code = 0x23;
+			IDEX_SHADOW.sham = IFID.sham;
 			break;
 		// lbu instruction
 		case 0x24:
@@ -363,6 +380,10 @@ void ID()
 		// sw instruction
 		case 0x2B:
 			break;
+        default:
+            printf("Unknown Instruction: OP Code = 0x%2x and Instruction address = %d\n", (IFID.OP_Code, (IFID.PC_Next-1) ));
+            return -1;
+
 	}
 }
 
@@ -403,6 +424,7 @@ void EX()
     010      And
     011      Or
     100      XOR
+    111      Less than
     */
 	// Check to see if R-format
 	if(IDEX.OP_Code == 0)
@@ -476,6 +498,20 @@ void EX()
         EXMEM_SHADOW.zero = 1;
 
     }
+    // lbu, lhu lw, sb, sh, and sw instruction
+    else if(IDEX.OP_Code == 0x23 || IDEX.OP_Code == 0x24 || IDEX.OP_Code == 0x28
+            ||  IDEX.OP_Code == 0x2B || IDEX.OP_Code == 0x29 || IDEX.OP_Code == 0x25)
+    {
+        // because mips is byte addressable and our memory is modeled
+        // as words.
+        // Ex lw $t0, 32($s0) => we want to index a[32/4] => a[8]
+        // Ex lb $to, 33($s0) => we want a[33/]4] => a[8] and byte (33 % 4) = byte 1
+        // Ex lhu $t0, 2($t0) => we want a[2/4] => a[0] and half word (2 >> 1) % 2 = halfword 1 of word 0
+        // ex lhu $t0, 6($t0) => a[6/4] => a[1] and halfword is (6 / 2) = 3 % 2 = halfword 1 of word 1
+        EXMEM_SHADOW.ALU_result = ALU_A + (ALU_B >> 2);
+        EXMEM_SHADOW.which_byte = ALU_B % 4;
+        EXMEM_SHADOW.which_half = (ALU_B >> 1) % 2;
+    }
     //I instruction
     else
     {
@@ -512,6 +548,7 @@ void EX()
 	EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
 	EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
 	EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
+	EXMEM_SHADOW.OP_Code = IDEX.OP_Code;
 	//Set zero flag to ALU_result for branch instructions
 	EXMEM_SHADOW.zero = EXMEM_SHADOW.ALU_result;
 
@@ -522,6 +559,7 @@ void EX()
 void MEM()
 {
 	printf("In Memory stage\n");
+	int word = 0;
 
 	//write data to memory
 	if(EXMEM.Mem_Wrt == 1)
@@ -532,7 +570,55 @@ void MEM()
 
 	if(EXMEM.Mem_Read == 1)
 	{
-		//MEMWB_SHADOW.Data_Mem_result = memory[EXMEM.ALU_result];
+		word = memory[EXMEM.ALU_result];
+		// lw instruction
+		if(EXMEM.OP_Code == 0x23)
+        {
+            MEMWB_SHADOW.Data_Mem_result = word;
+        }
+        // lhu instruction
+        else if(EXMEM.OP_Code == 0x25)
+        {
+            if(EXMEM.which_half == 0)
+            {
+                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_0) >> 16;
+            }
+            else if(EXMEM.which_half == 1)
+            {
+                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_1);
+            }
+            else
+            {
+                printf("Error: In lhu instruction, Unknown half word value!\n");
+                return -1;
+            }
+        }
+        // lbu instruction
+        else if(EXMEM.OP_Code == 0x24)
+        {
+            if(EXMEM.which_byte == 0)
+            {
+                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_0) >> 24;
+            }
+            else if(EXMEM.which_byte == 1)
+            {
+                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_1) >> 16;
+            }
+            else if(EXMEM.which_byte == 2)
+            {
+                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_2) >> 8;
+            }
+            else if(EXMEM.which_byte == 3)
+            {
+                MEMWB_SHADOW.Data_Mem_result = word & BIG_END_BYTE_3;
+            }
+            else //Unknown which byte value
+            {
+                printf("Error: In lbu instruction, Unknown byte value!\n");
+                return -1;
+            }
+        }
+
 	}
 	MEMWB_SHADOW.Reg_Wrt = EXMEM.Reg_Wrt;
 	MEMWB_SHADOW.WB_reg = EXMEM.WB_reg;
