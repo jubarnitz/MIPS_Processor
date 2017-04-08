@@ -24,3 +24,19 @@
 	"cache.h"
 	"flush_reg.h"
 
+1491101914 source:/home/user/MIPS_Processor/MIPS_Project/cache.c
+	"cache.h"
+
+1490991650 /home/user/MIPS_Processor/MIPS_Project/cache.h
+	<stdio.h>
+	"pipe_reg.h"
+
+1491628941 /home/user/MIPS_Processor/MIPS_Project/pipe_reg.h
+
+1490986775 source:/home/user/MIPS_Processor/MIPS_Project/flush_reg.c
+	"flush_reg.h"
+
+1490986775 /home/user/MIPS_Processor/MIPS_Project/flush_reg.h
+	<stdio.h>
+	"pipe_reg.h"
+

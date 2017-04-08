@@ -32,6 +32,7 @@ typedef struct ID_EX_Reg
 	unsigned int reg_RD;
 	unsigned int PC_Next;
 	unsigned int branch;
+	unsigned int branch_target;
 	unsigned int OP_Code;
 	unsigned int sham;
 	int sign_ext_imm;
@@ -44,7 +45,6 @@ typedef struct EX_MEM_Reg
 	unsigned int Mem_Read;
 	unsigned int Mem_to_Reg;
 	unsigned int Mem_Wrt;
-	unsigned int zero;
 	unsigned int Reg_RT_val;
 	unsigned int WB_reg;
 	unsigned int PC_Next;

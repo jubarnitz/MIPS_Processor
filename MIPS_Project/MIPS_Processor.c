@@ -53,12 +53,11 @@ int main()
 void IF()
 {
     // Branch Logic
-	//PC.pc_src = IDEX.branch; //we're going to do it this way
-	PC.pc_src = EXMEM.branch & EXMEM.zero;
+	PC.pc_src = IDEX.branch;
 	if(PC.pc_src)
 	{
 		// go to instruction from branch
-		PC.pc = EXMEM.branch_target;
+		PC.pc = IDEX.branch_target;
 	}
 
 	unsigned int instr = memory[PC.pc];
@@ -91,7 +90,7 @@ void IF()
 	PC.pc = PC.pc + 1;
 }
 
-void ID()
+int ID()
 {
 	//TODO: write to dst reg
 	printf("In instruction Decode stage\n");
@@ -132,7 +131,6 @@ void ID()
                     IDEX_SHADOW.OP_Code = IFID.OP_Code;
                     IDEX_SHADOW.ALU_Op = 7;
                     IDEX_SHADOW.ALU_Src = 0;
-                    IDEX_SHADOW.branch = 1;
                     IDEX_SHADOW.Mem_Read = 0;
                     IDEX_SHADOW.Mem_Wrt = 0;
                     IDEX_SHADOW.Mem_to_Reg = 0;
@@ -143,6 +141,13 @@ void ID()
                     IDEX_SHADOW.reg_RD = IFID.reg_RD;
                     IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
                     IDEX_SHADOW.PC_Next = IFID.PC_Next;
+                    if (IDEX_SHADOW.Reg_RS_val < 0)
+                    {
+                        IDEX_SHADOW.branch = 1;
+                        IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+                    }
+                    else
+                        IDEX_SHADOW.branch = 0;
                     break;
                 default:
                     printf("Error: OpCode 1 instruction not implemented\n");
@@ -164,7 +169,8 @@ void ID()
 			IDEX_SHADOW.reg_RS = IFID.reg_RS;
 			IDEX_SHADOW.reg_RT = 31; // 31 is the $ra register (for jal)
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
-			IDEX_SHADOW.sign_ext_imm = IFID.jmp_addr;
+			IDEX_SHADOW.sign_ext_imm = IFID.imm;
+			IDEX_SHADOW.branch_target =  (IDEX.PC_Next & 0xF0000000) | IFID.jmp_addr;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			break;
 		// beq instruction
@@ -185,7 +191,10 @@ void ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
             if (IDEX_SHADOW.Reg_RS_val == IDEX_SHADOW.Reg_RT_val)
+            {
                 IDEX_SHADOW.branch = 1;
+                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+            }
             else
                 IDEX_SHADOW.branch = 0;
 			break;
@@ -207,15 +216,62 @@ void ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
             if (IDEX_SHADOW.Reg_RS_val != IDEX_SHADOW.Reg_RT_val)
+            {
                 IDEX_SHADOW.branch = 1;
+                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+            }
             else
                 IDEX_SHADOW.branch = 0;
 			break;
 		// blez instruction
 		case 0x6:
+            IDEX_SHADOW.Reg_Dst = 0;
+            IDEX_SHADOW.Reg_Wrt = 0;
+            IDEX_SHADOW.OP_Code = IFID.OP_Code;
+            IDEX_SHADOW.ALU_Op = 7;
+            IDEX_SHADOW.ALU_Src = 0;
+            IDEX_SHADOW.Mem_Read = 0;
+            IDEX_SHADOW.Mem_Wrt = 0;
+            IDEX_SHADOW.Mem_to_Reg = 0;
+            IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+            IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+            IDEX_SHADOW.reg_RS = IFID.reg_RS;
+            IDEX_SHADOW.reg_RT = IFID.reg_RT;
+            IDEX_SHADOW.reg_RD = IFID.reg_RD;
+            IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+            IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            if (IDEX_SHADOW.Reg_RS_val <= 0)
+            {
+                IDEX_SHADOW.branch = 1;
+                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+            }
+            else
+                IDEX_SHADOW.branch = 0;
 			break;
 		// bgtz instruction
 		case 0x7:
+            IDEX_SHADOW.Reg_Dst = 0;
+            IDEX_SHADOW.Reg_Wrt = 0;
+            IDEX_SHADOW.OP_Code = IFID.OP_Code;
+            IDEX_SHADOW.ALU_Op = 0;
+            IDEX_SHADOW.ALU_Src = 0;
+            IDEX_SHADOW.Mem_Read = 0;
+            IDEX_SHADOW.Mem_Wrt = 0;
+            IDEX_SHADOW.Mem_to_Reg = 0;
+            IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+            IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+            IDEX_SHADOW.reg_RS = IFID.reg_RS;
+            IDEX_SHADOW.reg_RT = IFID.reg_RT;
+            IDEX_SHADOW.reg_RD = IFID.reg_RD;
+            IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+            IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            if (IDEX_SHADOW.Reg_RS_val > 0)
+            {
+                IDEX_SHADOW.branch = 1;
+                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+            }
+            else
+                IDEX_SHADOW.branch = 0;
 			break;
 		case 0x8: // addi instruction
 		case 0x9: // addiu instruction
@@ -381,10 +437,11 @@ void ID()
 		case 0x2B:
 			break;
         default:
-            printf("Unknown Instruction: OP Code = 0x%2x and Instruction address = %d\n", (IFID.OP_Code, (IFID.PC_Next-1) ));
+            printf("Unknown Instruction: OP Code = 0x%2x and Instruction address = %d\n", IFID.OP_Code, (IFID.PC_Next-1) );
             return -1;
 
 	}
+	return 0;
 }
 
 void EX()
@@ -494,8 +551,6 @@ void EX()
         EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
         EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
         EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
-        //Set zero flag to 1 so we take the branch (a.k.a. the jump)
-        EXMEM_SHADOW.zero = 1;
 
     }
     // lbu, lhu lw, sb, sh, and sw instruction
@@ -541,7 +596,7 @@ void EX()
 
 
 	EXMEM_SHADOW.branch = IDEX.branch;
-	EXMEM_SHADOW.branch_target = IDEX.PC_Next + (IDEX.sign_ext_imm << 2);
+	EXMEM_SHADOW.branch_target = IDEX.PC_Next + IDEX.sign_ext_imm;
 	EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
 	EXMEM_SHADOW.PC_Next = IDEX.PC_Next;
 	EXMEM_SHADOW.Reg_Wrt = IDEX.Reg_Wrt;
@@ -549,14 +604,12 @@ void EX()
 	EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
 	EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
 	EXMEM_SHADOW.OP_Code = IDEX.OP_Code;
-	//Set zero flag to ALU_result for branch instructions
-	EXMEM_SHADOW.zero = EXMEM_SHADOW.ALU_result;
 
 	//Handle Forwarding issues
 
 }
 
-void MEM()
+int MEM()
 {
 	printf("In Memory stage\n");
 	int word = 0;
@@ -624,6 +677,7 @@ void MEM()
 	MEMWB_SHADOW.WB_reg = EXMEM.WB_reg;
 	MEMWB_SHADOW.ALU_result = EXMEM.ALU_result;
 	MEMWB_SHADOW.Mem_to_Reg = EXMEM.Mem_to_Reg;
+	return 0;
 }
 
 void WB()
