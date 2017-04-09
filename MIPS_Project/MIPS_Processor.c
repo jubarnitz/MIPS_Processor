@@ -382,7 +382,7 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xE;
 			break;
-		// lui instruction 
+		// lui instruction
 		case 0xF:
 		    IDEX_SHADOW.ALU_Src = 1;
 		    IDEX_SHADOW.ALU_Op = 2;
@@ -399,8 +399,28 @@ int ID()
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm << 16;
-			IDEX_SHADOW.OP_Code = 0xF;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			break;
+        // seb instruction
+        case 0x1F:
+            IDEX_SHADOW.ALU_Src = 0;
+		    IDEX_SHADOW.ALU_Op = 0;
+		    IDEX_SHADOW.Reg_Dst = 1;
+		    IDEX_SHADOW.Reg_Wrt = 1;
+		    IDEX_SHADOW.Mem_to_Reg = 0;
+		    IDEX_SHADOW.Mem_Read = 0;
+		    IDEX_SHADOW.Mem_Wrt = 0;
+		    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+		    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+		    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.branch = 0;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
+			break;
+        case 0x20: // lb instruction
 		case 0x23: // lw instruction
 		case 0x24: // lbu instruction
 		case 0x25: // lhu instruction
@@ -549,19 +569,16 @@ void EX()
     //J instruction
     else if (IDEX.OP_Code == 2 || IDEX.OP_Code == 3)
     {
-        EXMEM_SHADOW.branch = IDEX.branch;
-        EXMEM_SHADOW.branch_target = (IDEX.PC_Next & 0xF0000000) | (IDEX.sign_ext_imm << 2);
-        EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
-        EXMEM_SHADOW.PC_Next = IDEX.PC_Next;
         EXMEM_SHADOW.ALU_result = IDEX.PC_Next; // so we can save the addr of the next inst in the WB stage
-        EXMEM_SHADOW.Reg_Wrt = IDEX.Reg_Wrt;
-        EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
-        EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
-        EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
-
     }
-    // lbu, lhu lw, sb, sh, and sw instruction
-    else if(IDEX.OP_Code == 0x23 || IDEX.OP_Code == 0x24 || IDEX.OP_Code == 0x28
+    // seb instruction (sign-extend byte)
+    else if (IDEX.OP_Code == 0x1F)
+    {
+        char byte_of_RT = IDEX.Reg_RT_val; // get just a byte of RT
+        EXMEM_SHADOW.ALU_result = byte_of_RT; // now sign extend it
+    }
+    // lb, lbu, lhu lw, sb, sh, and sw instruction
+    else if(IDEX.OP_Code == 0x20 || IDEX.OP_Code == 0x23 || IDEX.OP_Code == 0x24 || IDEX.OP_Code == 0x28
             ||  IDEX.OP_Code == 0x2B || IDEX.OP_Code == 0x29 || IDEX.OP_Code == 0x25)
     {
         // because mips is byte addressable and our memory is modeled
@@ -603,7 +620,7 @@ void EX()
 
 
 	EXMEM_SHADOW.branch = IDEX.branch;
-	EXMEM_SHADOW.branch_target = IDEX.PC_Next + IDEX.sign_ext_imm;
+	EXMEM_SHADOW.branch_target = IDEX.branch_target;
 	EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
 	EXMEM_SHADOW.PC_Next = IDEX.PC_Next;
 	EXMEM_SHADOW.Reg_Wrt = IDEX.Reg_Wrt;
@@ -708,8 +725,8 @@ int MEM()
                 return -1;
             }
         }
-        // lbu instruction
-        else if(EXMEM.OP_Code == 0x24)
+        // lb and lbu instruction
+        else if(EXMEM.OP_Code == 0x20 || EXMEM.OP_Code == 0x24)
         {
             if(EXMEM.which_byte == 0)
             {
@@ -732,6 +749,13 @@ int MEM()
                 printf("Error: In lbu instruction, Unknown byte value!\n");
                 return -1;
             }
+            // sign-extend the result if lb instruction
+            if (EXMEM.OP_Code == 0x20)
+            {
+                char c = MEMWB_SHADOW.Data_Mem_result; // get just the one byte so we can sign-extend it
+                MEMWB_SHADOW.Data_Mem_result = c; // this sign-extends the byte
+            }
+
         }
 
 	}
