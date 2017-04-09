@@ -382,7 +382,7 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xE;
 			break;
-		// lui instruction -- I need to double check this one - Jake
+		// lui instruction 
 		case 0xF:
 		    IDEX_SHADOW.ALU_Src = 1;
 		    IDEX_SHADOW.ALU_Op = 2;
@@ -398,7 +398,7 @@ int ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.branch = 0;
-			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm << 16;
 			IDEX_SHADOW.OP_Code = 0xF;
 			break;
 		case 0x23: // lw instruction
