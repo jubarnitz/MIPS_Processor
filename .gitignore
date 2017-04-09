@@ -35,3 +35,5 @@
 #Code::Blocks files
 MIPS_Project/MIPS_Project.depend
 MIPS_Project/MIPS_Project.layout
+MIPS_Project/bin/*
+MIPS_Project/obj/*

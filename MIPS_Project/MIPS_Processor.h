@@ -24,9 +24,9 @@
 #define BIG_END_HALFWORD_1 0x0000ffff
 
 void IF();
-void ID();
+int ID();
 void EX();
-void MEM();
+int MEM();
 void WB();
 void Update();
 

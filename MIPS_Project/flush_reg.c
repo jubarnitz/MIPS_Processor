@@ -46,7 +46,6 @@ void Flush_EX_MEM(EX_MEM *EXMEM_ptr)
 	EXMEM_ptr->Mem_Read = 0;
 	EXMEM_ptr->Mem_to_Reg = 0;
 	EXMEM_ptr->Mem_Wrt = 0;
-	EXMEM_ptr->zero = 0;
 	EXMEM_ptr->Reg_RT_val = 0;
 	EXMEM_ptr->WB_reg = 0;
 	EXMEM_ptr->PC_Next = 0;
