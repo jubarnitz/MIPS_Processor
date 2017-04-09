@@ -345,8 +345,9 @@ void ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xF;
 			break;
-		// lw instruction
-		case 0x23:
+		case 0x23: // lw instruction
+		case 0x24: // lbu instruction
+		case 0x25: // lhu instruction
 		    IDEX_SHADOW.ALU_Src = 1;
 		    IDEX_SHADOW.ALU_Op = 0;
 		    IDEX_SHADOW.Reg_Dst = 0;
@@ -362,23 +363,29 @@ void ID()
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
-			IDEX_SHADOW.OP_Code = 0x23;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			IDEX_SHADOW.sham = IFID.sham;
 			break;
-		// lbu instruction
-		case 0x24:
-			break;
-		// lhu instruction
-		case 0x25:
-			break;
-		// sb instruction
-		case 0x28:
-			break;
-		// sh instruction
-		case 0x29:
-			break;
-		// sw instruction
-		case 0x2B:
+		case 0x28: // sb instruction
+		case 0x29: // sh instruction
+		case 0x2B: // sw instruction
+		    IDEX_SHADOW.ALU_Src = 1;
+		    IDEX_SHADOW.ALU_Op = 0;
+		    IDEX_SHADOW.Reg_Dst = 0;
+		    IDEX_SHADOW.Reg_Wrt = 0;
+		    IDEX_SHADOW.Mem_to_Reg = 0;
+		    IDEX_SHADOW.Mem_Read = 0;
+		    IDEX_SHADOW.Mem_Wrt = 1;
+		    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+		    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+		    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.branch = 0;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
+			IDEX_SHADOW.sham = IFID.sham;
 			break;
         default:
             printf("Unknown Instruction: OP Code = 0x%2x and Instruction address = %d\n", (IFID.OP_Code, (IFID.PC_Next-1) ));
@@ -565,7 +572,62 @@ void MEM()
 	if(EXMEM.Mem_Wrt == 1)
 	{
 		// wtite to memory
+		word = EXMEM.Reg_RT_val;
 		//memory[EXMEM.ALU_result] = EXMEM.Reg_RT_val
+		// sw instruction
+		if(EXMEM.OP_Code == 0x2B)
+        {
+            memory[EXMEM.ALU_result] = word;
+        }
+        else if(EXMEM.OP_Code == 0x29)
+        {
+            if(EXMEM.which_half == 0)
+            {
+                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_0);
+                memory[EXMEM.ALU_result] = (word << 16) | memory[EXMEM.ALU_result];
+            }
+            else if(EXMEM.which_half == 1)
+            {
+                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_1);
+                memory[EXMEM.ALU_result] = (word) | memory[EXMEM.ALU_result];
+            }
+            else
+            {
+                printf("Error: In sh instruction, Unknown half word value!\n");
+                return -1;
+            }
+
+        }
+        else if(EXMEM.OP_Code == 0x28)
+        {
+            if(EXMEM.which_byte == 0)
+            {
+                // zero out byte 0
+                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_0);
+                // shift value to correct position and or with the memory value
+                memory[EXMEM.ALU_result] = (word << 24) | memory[EXMEM.ALU_result];
+            }
+            else if(EXMEM.which_byte == 1)
+            {
+                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_1);
+                memory[EXMEM.ALU_result] = (word << 16) | memory[EXMEM.ALU_result];
+            }
+            else if(EXMEM.which_byte == 2)
+            {
+                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_2);
+                memory[EXMEM.ALU_result] = (word << 8) | memory[EXMEM.ALU_result];
+            }
+            else if(EXMEM.which_byte == 3)
+            {
+                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_3);
+                memory[EXMEM.ALU_result] = word | memory[EXMEM.ALU_result];
+            }
+            else
+            {
+                printf("Error: In sb instruction, Unknown byte value!\n");
+                return -1;
+            }
+        }
 	}
 
 	if(EXMEM.Mem_Read == 1)
