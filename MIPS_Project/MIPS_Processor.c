@@ -150,7 +150,7 @@ int ID()
                         IDEX_SHADOW.branch = 0;
                     break;
                 default:
-                    printf("Error: OpCode 1 instruction not implemented\n");
+                    printf("Error: OpCode 1 instruction not implemented.  IFID.reg_RT = %d\n", IFID.reg_RT);
             }
             break;
 		case 0x2: // j instruction
