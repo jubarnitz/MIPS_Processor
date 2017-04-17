@@ -6,7 +6,7 @@
 
 #define CACHE_SIZE 256
 #define NUM_REGISTERS 32
-#define MEMORY_SIZE 1000
+#define MEMORY_SIZE 3000
 
 unsigned int memory[MEMORY_SIZE];
 

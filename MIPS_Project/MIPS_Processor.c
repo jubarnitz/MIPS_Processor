@@ -5,16 +5,6 @@
  *
  */
 
-
-
-/* Probably a better scheme for the ALU OP
-    if Instruction is R-format then the ALUOp will be based on the func
-    otherwise:
-    ALUOp   Action needed by ALU
-    00      Addition (for load and store)
-    01      Subtraction (for beq)
-https://cs.nyu.edu/courses/fall01/V22.0436-001/lectures/lecture-16.html
-*/
 #include "MIPS_Processor.h"
 
 int main()
@@ -46,7 +36,18 @@ int main()
 		EX();
 		MEM();
 		Update();
+// clock cycle == 1772 finished copy_array
+// clock cycle == 1777 start bubble sort
+		if(clock_cycle > 100000)
+        {
+            break;
+        }
+
 	}
+	printf("memory[6] = %d\n", memory[6]);
+	printf("memory[7] = %d\n", memory[7]);
+	printf("memory[8] = %d\n", memory[8]);
+	printf("memory[9] = %d\n", memory[9]);
 
 }
 
@@ -63,6 +64,7 @@ void IF()
 	unsigned int instr = memory[PC.pc];
 	printf("In Instruction Fetch stage\n");
 	printf("instruction = 0x%08x\n", instr);
+	printf("PC.pc = %d\n", PC.pc);
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;
@@ -118,7 +120,13 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = 0;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.sham = IFID.sham;
-			break;
+			// jr instruction
+			if(IFID.func == 0x8)
+            {
+                IDEX_SHADOW.branch = 1;
+                IDEX_SHADOW.branch_target = IDEX_SHADOW.Reg_RS_val;
+            }
+            break;
 
 		// branch and trap instructions based on rt value
 		case 0x1:
@@ -141,10 +149,15 @@ int ID()
                     IDEX_SHADOW.reg_RD = IFID.reg_RD;
                     IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
                     IDEX_SHADOW.PC_Next = IFID.PC_Next;
+                    // forward from EXMEM register
+                    if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+                    {
+                        IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
+                    }
                     if (IDEX_SHADOW.Reg_RS_val < 0)
                     {
                         IDEX_SHADOW.branch = 1;
-                        IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+                        IDEX_SHADOW.branch_target = IFID.PC_Next + IDEX_SHADOW.sign_ext_imm;
                     }
                     else
                         IDEX_SHADOW.branch = 0;
@@ -190,10 +203,19 @@ int ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            // forward from EXMEM register
+            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+            {
+                IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
+            }
+            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RT )
+            {
+                IDEX_SHADOW.Reg_RT_val = EXMEM.ALU_result;
+            }
             if (IDEX_SHADOW.Reg_RS_val == IDEX_SHADOW.Reg_RT_val)
             {
                 IDEX_SHADOW.branch = 1;
-                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+                IDEX_SHADOW.branch_target = IFID.PC_Next + IDEX_SHADOW.sign_ext_imm;
             }
             else
                 IDEX_SHADOW.branch = 0;
@@ -215,10 +237,19 @@ int ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            // forward from EXMEM register
+            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS )
+            {
+                IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
+            }
+            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RT )
+            {
+                IDEX_SHADOW.Reg_RT_val = EXMEM.ALU_result;
+            }
             if (IDEX_SHADOW.Reg_RS_val != IDEX_SHADOW.Reg_RT_val)
             {
                 IDEX_SHADOW.branch = 1;
-                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+                IDEX_SHADOW.branch_target = IFID.PC_Next + IDEX_SHADOW.sign_ext_imm;
             }
             else
                 IDEX_SHADOW.branch = 0;
@@ -240,16 +271,22 @@ int ID()
             IDEX_SHADOW.reg_RD = IFID.reg_RD;
             IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
             IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            // forward from EXMEM register
+            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+            {
+                IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
+            }
             if (IDEX_SHADOW.Reg_RS_val <= 0)
             {
                 IDEX_SHADOW.branch = 1;
-                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+                IDEX_SHADOW.branch_target = IFID.PC_Next + IDEX_SHADOW.sign_ext_imm;
             }
             else
                 IDEX_SHADOW.branch = 0;
 			break;
 		// bgtz instruction
 		case 0x7:
+            printf("bgtz   rs > 0\n");
             IDEX_SHADOW.Reg_Dst = 0;
             IDEX_SHADOW.Reg_Wrt = 0;
             IDEX_SHADOW.OP_Code = IFID.OP_Code;
@@ -263,12 +300,23 @@ int ID()
             IDEX_SHADOW.reg_RS = IFID.reg_RS;
             IDEX_SHADOW.reg_RT = IFID.reg_RT;
             IDEX_SHADOW.reg_RD = IFID.reg_RD;
+            printf(" RS value = %d\n", IDEX_SHADOW.Reg_RS_val);
+            printf("IFID.imm = %d\n", IFID.imm);
             IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+            printf("IDEX_SHADOW.sign_ext_imm = %d\n");
             IDEX_SHADOW.PC_Next = IFID.PC_Next;
+            // forward from EXMEM register
+            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+            {
+                IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
+            }
             if (IDEX_SHADOW.Reg_RS_val > 0)
             {
+
                 IDEX_SHADOW.branch = 1;
-                IDEX_SHADOW.branch_target = IDEX.PC_Next + IDEX_SHADOW.sign_ext_imm;
+                printf("IFID.PC_Next = %d\n", IFID.PC_Next);
+                IDEX_SHADOW.branch_target = IFID.PC_Next + IDEX_SHADOW.sign_ext_imm;
+                printf("bgtz => we are jumping to : %d\n", IDEX_SHADOW.branch_target);
             }
             else
                 IDEX_SHADOW.branch = 0;
@@ -382,7 +430,7 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xE;
 			break;
-		// lui instruction -- I need to double check this one - Jake
+		// lui instruction
 		case 0xF:
 		    IDEX_SHADOW.ALU_Src = 1;
 		    IDEX_SHADOW.ALU_Op = 2;
@@ -398,9 +446,29 @@ int ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.branch = 0;
-			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
-			IDEX_SHADOW.OP_Code = 0xF;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm << 16;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			break;
+        // seb instruction
+        case 0x1F:
+            IDEX_SHADOW.ALU_Src = 0;
+		    IDEX_SHADOW.ALU_Op = 0;
+		    IDEX_SHADOW.Reg_Dst = 1;
+		    IDEX_SHADOW.Reg_Wrt = 1;
+		    IDEX_SHADOW.Mem_to_Reg = 0;
+		    IDEX_SHADOW.Mem_Read = 0;
+		    IDEX_SHADOW.Mem_Wrt = 0;
+		    IDEX_SHADOW.Reg_RS_val = reg[IFID.reg_RS];
+		    IDEX_SHADOW.Reg_RT_val = reg[IFID.reg_RT];
+		    IDEX_SHADOW.reg_RS = IFID.reg_RS;
+			IDEX_SHADOW.reg_RT = IFID.reg_RT;
+			IDEX_SHADOW.reg_RD = IFID.reg_RD;
+			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.branch = 0;
+			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
+			IDEX_SHADOW.OP_Code = IFID.OP_Code;
+			break;
+        case 0x20: // lb instruction
 		case 0x23: // lw instruction
 		case 0x24: // lbu instruction
 		case 0x25: // lhu instruction
@@ -448,15 +516,69 @@ int ID()
             return -1;
 
 	}
+
+	//Hazard Detection Unit
+
+    // if the instruction following a load is accessing the write reg.
+    if( IDEX_SHADOW.Mem_Read &&
+       ( (IDEX_SHADOW.reg_RT == IFID_SHADOW.reg_RS)
+        || (IDEX_SHADOW.reg_RT == IFID_SHADOW.reg_RT) ) )
+    {
+        //stall the pipeline
+        //prevent pc from incrementing
+        PC.pc = PC.pc - 1;
+        // flush
+        Flush_IF_ID(&IFID_SHADOW);
+    }
+
+    // Check for data dependence upon previous instruction from branch
+    if( IDEX_SHADOW.branch && ( IDEX_SHADOW.reg_RS != 0 && IDEX_SHADOW.reg_RT != 0)
+       && ( (IDEX_SHADOW.reg_RS == IDEX.reg_RT) || (IDEX_SHADOW.reg_RS == IDEX.reg_RD) )
+       && ( (IDEX_SHADOW.OP_Code != 0x0) &&  (IDEX_SHADOW.OP_Code != 0x2) && (IDEX_SHADOW.OP_Code != 0x3) ) )
+    {
+        printf("Data hazard for branch!\n");
+        //stall the pipeline
+        //prevent pc from incrementing
+        PC.pc = PC.pc - 1;
+        // flush
+        IFID_SHADOW = IFID;
+        Flush_ID_EX(&IDEX_SHADOW);
+    }
 	return 0;
 }
 
 void EX()
 {
 	int ALU_A = IDEX.Reg_RS_val;
-	int ALU_B;
+	int ALU_B = IDEX.Reg_RT_val;
+	// base case if forwarding does not apply
+	EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
 
 	printf("In Execute stage\n");
+
+	//Forwarding Logic from the EXMEM Register
+	if( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg == IDEX.reg_RS) )
+    {
+        ALU_A = EXMEM.ALU_result;
+    }
+    if( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg == IDEX.reg_RT) )
+    {
+        ALU_B = EXMEM.ALU_result;
+    }
+    //Forwarding Logic from the MEMWB Register
+    if ( MEMWB.Reg_Wrt && (MEMWB.WB_reg != 0)
+        && !( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg != IDEX.reg_RS) )
+        && (MEMWB.WB_reg == IDEX.reg_RS) )
+    {
+        ALU_A = MEMWB.ALU_result;
+    }
+    if ( MEMWB.Reg_Wrt && (MEMWB.WB_reg != 0)
+        && !( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg != IDEX.reg_RT) )
+        && (MEMWB.WB_reg == IDEX.reg_RT) )
+    {
+        ALU_B = MEMWB.ALU_result;
+        EXMEM_SHADOW.Reg_RT_val = MEMWB.Data_Mem_result;
+    }
 
 	//RegDst Mux
 	if(IDEX.Reg_Dst == 1)
@@ -473,10 +595,7 @@ void EX()
 	{
 		ALU_B = IDEX.sign_ext_imm;
 	}
-	else
-	{
-		ALU_B = IDEX.Reg_RT_val;
-	}
+
 
 	// ALU Control
 	/*
@@ -514,6 +633,8 @@ void EX()
             case(0x7): // shift right arithmetic variable
                 EXMEM_SHADOW.ALU_result = (int)ALU_B >> ALU_A;
                 break;
+            case(0x8): // jr instruction leave black
+                break;
             case(0x20): //add instruction
                 EXMEM_SHADOW.ALU_result = (int)ALU_A + (int)ALU_B;
                 break;
@@ -525,6 +646,7 @@ void EX()
                 break;
             case(0x23): // subu
                 EXMEM_SHADOW.ALU_result = ALU_A - ALU_B;
+                break;
             case(0x24): //and instruction
                 EXMEM_SHADOW.ALU_result = ALU_A & ALU_B;
                 break;
@@ -543,25 +665,24 @@ void EX()
             case(0x2B): //sltu instruction
                 EXMEM_SHADOW.ALU_result = (ALU_A < ALU_B);
                 break;
-
+            default:
+                printf("In EX(), Unknown func code for R format => %d\n", IDEX.ALU_Op );
+                return -1;
         }
     }
     //J instruction
     else if (IDEX.OP_Code == 2 || IDEX.OP_Code == 3)
     {
-        EXMEM_SHADOW.branch = IDEX.branch;
-        EXMEM_SHADOW.branch_target = (IDEX.PC_Next & 0xF0000000) | (IDEX.sign_ext_imm << 2);
-        EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
-        EXMEM_SHADOW.PC_Next = IDEX.PC_Next;
-        EXMEM_SHADOW.ALU_result = IDEX.PC_Next; // so we can save the addr of the next inst in the WB stage
-        EXMEM_SHADOW.Reg_Wrt = IDEX.Reg_Wrt;
-        EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
-        EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
-        EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
-
+        EXMEM_SHADOW.ALU_result = IDEX.PC_Next + 1; // so we can save the addr of the next inst in the WB stage
     }
-    // lbu, lhu lw, sb, sh, and sw instruction
-    else if(IDEX.OP_Code == 0x23 || IDEX.OP_Code == 0x24 || IDEX.OP_Code == 0x28
+    // seb instruction (sign-extend byte)
+    else if (IDEX.OP_Code == 0x1F)
+    {
+        char byte_of_RT = IDEX.Reg_RT_val; // get just a byte of RT
+        EXMEM_SHADOW.ALU_result = byte_of_RT; // now sign extend it
+    }
+    // lb, lbu, lhu lw, sb, sh, and sw instruction
+    else if(IDEX.OP_Code == 0x20 || IDEX.OP_Code == 0x23 || IDEX.OP_Code == 0x24 || IDEX.OP_Code == 0x28
             ||  IDEX.OP_Code == 0x2B || IDEX.OP_Code == 0x29 || IDEX.OP_Code == 0x25)
     {
         // because mips is byte addressable and our memory is modeled
@@ -570,7 +691,8 @@ void EX()
         // Ex lb $to, 33($s0) => we want a[33/]4] => a[8] and byte (33 % 4) = byte 1
         // Ex lhu $t0, 2($t0) => we want a[2/4] => a[0] and half word (2 >> 1) % 2 = halfword 1 of word 0
         // ex lhu $t0, 6($t0) => a[6/4] => a[1] and halfword is (6 / 2) = 3 % 2 = halfword 1 of word 1
-        EXMEM_SHADOW.ALU_result = ALU_A + (ALU_B >> 2);
+        EXMEM_SHADOW.ALU_result = (ALU_A >> 2) + (ALU_B >> 2);
+        printf("In EX() load/store access = memory[ %d ]\n ", EXMEM_SHADOW.ALU_result);
         EXMEM_SHADOW.which_byte = ALU_B % 4;
         EXMEM_SHADOW.which_half = (ALU_B >> 1) % 2;
     }
@@ -597,14 +719,17 @@ void EX()
             case(7): // set on less than
                 EXMEM_SHADOW.ALU_result = ALU_A < ALU_B;
                 break;
+            default:
+                printf("In EX(), failed I instr ALU op");
+                return -1;
         }
     }
 
 
 
 	EXMEM_SHADOW.branch = IDEX.branch;
-	EXMEM_SHADOW.branch_target = IDEX.PC_Next + IDEX.sign_ext_imm;
-	EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
+	EXMEM_SHADOW.branch_target = IDEX.branch_target;
+
 	EXMEM_SHADOW.PC_Next = IDEX.PC_Next;
 	EXMEM_SHADOW.Reg_Wrt = IDEX.Reg_Wrt;
 	EXMEM_SHADOW.Mem_Read = IDEX.Mem_Read;
@@ -630,7 +755,9 @@ int MEM()
 		// sw instruction
 		if(EXMEM.OP_Code == 0x2B)
         {
+            printf("In mem! EXMEM.ALU_result = %d\n", EXMEM.ALU_result);
             memory[EXMEM.ALU_result] = word;
+            printf("after store word\n");
         }
         else if(EXMEM.OP_Code == 0x29)
         {
@@ -708,8 +835,8 @@ int MEM()
                 return -1;
             }
         }
-        // lbu instruction
-        else if(EXMEM.OP_Code == 0x24)
+        // lb and lbu instruction
+        else if(EXMEM.OP_Code == 0x20 || EXMEM.OP_Code == 0x24)
         {
             if(EXMEM.which_byte == 0)
             {
@@ -732,6 +859,13 @@ int MEM()
                 printf("Error: In lbu instruction, Unknown byte value!\n");
                 return -1;
             }
+            // sign-extend the result if lb instruction
+            if (EXMEM.OP_Code == 0x20)
+            {
+                char c = MEMWB_SHADOW.Data_Mem_result; // get just the one byte so we can sign-extend it
+                MEMWB_SHADOW.Data_Mem_result = c; // this sign-extends the byte
+            }
+
         }
 
 	}
@@ -767,5 +901,23 @@ void Update()
 	EXMEM = EXMEM_SHADOW;
 	MEMWB = MEMWB_SHADOW;
 	clock_cycle++;
+
+	printf("v0 = %d\n", reg[2]);
+	printf("v1 = %d\n", reg[3]);
+	printf("a0 = %d\n", reg[4]);
+	printf("a1 = %d\n", reg[5]);
+	printf("a2 = %d\n", reg[6]);
+    printf("a3 = %d\n\n", reg[7]);
+
+    printf("t0 = %d\n", reg[8]);
+    printf("t1 = %d\n", reg[9]);
+    printf("t2 = %d\n", reg[10]);
+    printf("t3 = %d\n", reg[11]);
+    printf("t4 = %d\n", reg[12]);
+    printf("t5 = %d\n\n", reg[13]);
+
+    printf("ra = %d\n", reg[31]);
 	printf("Clock Cycle: %d\n", clock_cycle);
+	printf("The Program Counter = %d\n\n", PC.pc);
+	printf("-------------------------------------------------\n");
 }

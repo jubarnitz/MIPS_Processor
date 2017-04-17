@@ -6,7 +6,6 @@
 
 #include "cache.h"
 
-
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000bb8,	//	$sp = 3000
 0x00000bb8,	//	$fp = 3000
