@@ -38,7 +38,7 @@ int main()
 		Update();
 // clock cycle == 1772 finished copy_array
 // clock cycle == 1777 start bubble sort
-		if(clock_cycle > 100000)
+		if(clock_cycle > 1815)
         {
             break;
         }
@@ -120,6 +120,7 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = 0;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.sham = IFID.sham;
+			IDEX_SHADOW.I_format = 0;
 			// jr instruction
 			if(IFID.func == 0x8)
             {
@@ -149,11 +150,13 @@ int ID()
                     IDEX_SHADOW.reg_RD = IFID.reg_RD;
                     IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
                     IDEX_SHADOW.PC_Next = IFID.PC_Next;
-                    // forward from EXMEM register
-                    if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+                    IDEX_SHADOW.I_format = 1;
+                    // Branch forward logic
+                    if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
                     {
                         IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
                     }
+
                     if (IDEX_SHADOW.Reg_RS_val < 0)
                     {
                         IDEX_SHADOW.branch = 1;
@@ -185,6 +188,7 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = IFID.imm;
 			IDEX_SHADOW.branch_target =  (IDEX.PC_Next & 0xF0000000) | IFID.jmp_addr;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.I_format = 0;
 			break;
 		// beq instruction
 		case 0x4:
@@ -203,15 +207,17 @@ int ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
-            // forward from EXMEM register
-            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+			IDEX_SHADOW.I_format = 1;
+            // Branch forward logic
+            if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
             }
-            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RT )
+            if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RT) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RT_val = EXMEM.ALU_result;
             }
+
             if (IDEX_SHADOW.Reg_RS_val == IDEX_SHADOW.Reg_RT_val)
             {
                 IDEX_SHADOW.branch = 1;
@@ -237,15 +243,17 @@ int ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
-            // forward from EXMEM register
-            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS )
+			IDEX_SHADOW.I_format = 1;
+           // Branch forward logic
+            if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
             }
-            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RT )
+            if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RT) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RT_val = EXMEM.ALU_result;
             }
+
             if (IDEX_SHADOW.Reg_RS_val != IDEX_SHADOW.Reg_RT_val)
             {
                 IDEX_SHADOW.branch = 1;
@@ -271,11 +279,13 @@ int ID()
             IDEX_SHADOW.reg_RD = IFID.reg_RD;
             IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
             IDEX_SHADOW.PC_Next = IFID.PC_Next;
-            // forward from EXMEM register
-            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+            IDEX_SHADOW.I_format = 1;
+            // Branch forward logic
+            if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
             }
+
             if (IDEX_SHADOW.Reg_RS_val <= 0)
             {
                 IDEX_SHADOW.branch = 1;
@@ -303,13 +313,15 @@ int ID()
             printf(" RS value = %d\n", IDEX_SHADOW.Reg_RS_val);
             printf("IFID.imm = %d\n", IFID.imm);
             IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
-            printf("IDEX_SHADOW.sign_ext_imm = %d\n");
+            printf("IDEX_SHADOW.sign_ext_imm = %d\n", IDEX_SHADOW.sign_ext_imm);
             IDEX_SHADOW.PC_Next = IFID.PC_Next;
-            // forward from EXMEM register
-            if( EXMEM.WB_reg == IDEX_SHADOW.reg_RS)
+            IDEX_SHADOW.I_format = 1;
+            // Branch forward logic
+            if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
             }
+
             if (IDEX_SHADOW.Reg_RS_val > 0)
             {
 
@@ -337,6 +349,7 @@ int ID()
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
 			IDEX_SHADOW.branch = 0;
+			IDEX_SHADOW.I_format = 1;
 			if(IFID.OP_Code == 0x8)
 			{
 			    IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
@@ -363,6 +376,7 @@ int ID()
 			IDEX_SHADOW.reg_RT = IFID.reg_RT;
 			IDEX_SHADOW.reg_RD = IFID.reg_RD;
 			IDEX_SHADOW.PC_Next = IFID.PC_Next;
+			IDEX_SHADOW.I_format = 1;
 			if(IFID.OP_Code == 0xA)
 			{
 				IDEX_SHADOW.OP_Code = 0; // set this to 0 so we can reuse the R-format slt
@@ -393,6 +407,7 @@ int ID()
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xC;
+			IDEX_SHADOW.I_format = 1;
 			break;
 		case 0xD: // ori instruction
 		    IDEX_SHADOW.ALU_Src = 1;
@@ -411,6 +426,7 @@ int ID()
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xD;
+			IDEX_SHADOW.I_format = 1;
 			break;
 		case 0xE: // xori instruction
 		    IDEX_SHADOW.ALU_Src = 1;
@@ -429,6 +445,7 @@ int ID()
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = 0xE;
+			IDEX_SHADOW.I_format = 1;
 			break;
 		// lui instruction
 		case 0xF:
@@ -448,6 +465,7 @@ int ID()
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm << 16;
 			IDEX_SHADOW.OP_Code = IFID.OP_Code;
+			IDEX_SHADOW.I_format = 1;
 			break;
         // seb instruction
         case 0x1F:
@@ -467,6 +485,7 @@ int ID()
 			IDEX_SHADOW.branch = 0;
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = IFID.OP_Code;
+			IDEX_SHADOW.I_format = 0;
 			break;
         case 0x20: // lb instruction
 		case 0x23: // lw instruction
@@ -489,6 +508,7 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			IDEX_SHADOW.sham = IFID.sham;
+			IDEX_SHADOW.I_format = 1;
 			break;
 		case 0x28: // sb instruction
 		case 0x29: // sh instruction
@@ -510,11 +530,21 @@ int ID()
 			IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
 			IDEX_SHADOW.OP_Code = IFID.OP_Code;
 			IDEX_SHADOW.sham = IFID.sham;
+			IDEX_SHADOW.I_format = 1;
 			break;
         default:
             printf("Unknown Instruction: OP Code = 0x%2x and Instruction address = %d\n", IFID.OP_Code, (IFID.PC_Next-1) );
             return -1;
 
+	}
+	//determine Write Register for data hazard detection
+	if(IDEX_SHADOW.Reg_Dst == 1)
+	{
+		IDEX_SHADOW.WB_reg = IDEX.reg_RD;
+	}
+	else
+	{
+		IDEX_SHADOW.WB_reg = IDEX.reg_RT;
 	}
 
 	//Hazard Detection Unit
@@ -530,17 +560,17 @@ int ID()
         // flush
         Flush_IF_ID(&IFID_SHADOW);
     }
-
+    // I format instructions: addi, addiu, andi, xori, beq, bne, bgtz, bltz, blez, lb, lbu, lhu, lui, lw, ori, slti, sltiu, sb, sh, sw,
     // Check for data dependence upon previous instruction from branch
-    if( IDEX_SHADOW.branch && ( IDEX_SHADOW.reg_RS != 0 && IDEX_SHADOW.reg_RT != 0)
-       && ( (IDEX_SHADOW.reg_RS == IDEX.reg_RT) || (IDEX_SHADOW.reg_RS == IDEX.reg_RD) )
-       && ( (IDEX_SHADOW.OP_Code != 0x0) &&  (IDEX_SHADOW.OP_Code != 0x2) && (IDEX_SHADOW.OP_Code != 0x3) ) )
+    if(( (EXMEM.Mem_Read) && ((EXMEM.WB_reg == IFID.reg_RT) || (EXMEM.WB_reg == IFID.reg_RS)) && (EXMEM.WB_reg != 0x00) )
+        || ( (IDEX.Mem_Read) && ((IDEX.WB_reg == IFID.reg_RT) || (IDEX.WB_reg == IFID.reg_RS)) && (IDEX.WB_reg != 0x00) )
+        || ( (IDEX.OP_Code == 0x00) && ((IDEX.WB_reg == IFID.reg_RT) || (IDEX.WB_reg == IFID.reg_RS)) && (IDEX.WB_reg != 0x00) )
+        || ( (IDEX.I_format) && !(IDEX.Mem_Wrt) && (IDEX.WB_reg == IFID.reg_RT) )
+       )
     {
-        printf("Data hazard for branch!\n");
-        //stall the pipeline
-        //prevent pc from incrementing
-        PC.pc = PC.pc - 1;
-        // flush
+        //stall
+        printf("We are stalling!\n");
+        PC.pc = PC.pc -1;
         IFID_SHADOW = IFID;
         Flush_ID_EX(&IDEX_SHADOW);
     }

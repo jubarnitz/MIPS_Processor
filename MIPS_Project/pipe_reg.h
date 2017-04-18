@@ -35,6 +35,8 @@ typedef struct ID_EX_Reg
 	unsigned int branch_target;
 	unsigned int OP_Code;
 	unsigned int sham;
+	unsigned int WB_reg;
+	unsigned int I_format;
 	int sign_ext_imm;
 } ID_EX;
 
