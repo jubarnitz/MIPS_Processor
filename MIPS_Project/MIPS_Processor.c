@@ -700,12 +700,21 @@ void EX()
                 {
                     EXMEM_SHADOW.ALU_result = ALU_A;
                 }
+                else
+                {
+                    EXMEM_SHADOW.ALU_result = reg[EXMEM_SHADOW.WB_reg];
+                }
                 break;
             case(0xB):
                 if(EXMEM_SHADOW.Reg_RT_val != 0)
                 {
                     EXMEM_SHADOW.ALU_result = ALU_A;
                 }
+                else
+                {
+                    EXMEM_SHADOW.ALU_result = reg[EXMEM_SHADOW.WB_reg];
+                }
+                break;
             case(0x20): //add instruction
                 EXMEM_SHADOW.ALU_result = (int)ALU_A + (int)ALU_B;
                 break;
