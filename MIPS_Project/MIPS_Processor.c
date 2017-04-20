@@ -391,12 +391,14 @@ int ID()
 				IDEX_SHADOW.OP_Code = 0; // set this to 0 so we can reuse the R-format slt
                 IDEX_SHADOW.ALU_Op = 0x2A; // R-format slt
                 IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
-		}
+                IDEX_SHADOW.Reg_RT_val = IDEX_SHADOW.sign_ext_imm;
+            }
 			else if(IFID.OP_Code == 0xB)
 			{
 				IDEX_SHADOW.OP_Code = 0; // set this to 0 so we can reuse the R-format sltu
                 IDEX_SHADOW.ALU_Op = 0x2B; // R-format sltu
                 IDEX_SHADOW.sign_ext_imm = (unsigned int)IFID.imm;
+                IDEX_SHADOW.Reg_RT_val = IDEX_SHADOW.sign_ext_imm;
 		}
 			break;
 		case 0xC: // andi instruction

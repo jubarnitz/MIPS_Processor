@@ -1,9 +1,5 @@
 # MIPS_Processor
 
-4/10/17
-	Successfully jumped into copy_array from addr 153 to addr 10. 
-	Then got stuck in a loop, with our error message from the ID stage: 
-	"Unkonwn Instruction: OP Code = 0x24420004 and Instruction address = 18"
-	Still needs troubleshooting. 
+4/19/2017 Program 1 runs with correct values for memory[6] and memory[8](insertion sort). Both arrays get sorted but bubble sort run for an 15000 passes then what the professor has and the final out is wrong.
 
 

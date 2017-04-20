@@ -155,24 +155,24 @@ unsigned int program_image[MEMORY_SIZE] = {
 0xafb007f4,   // 	sw	s0,2036(sp)
 0x8c420000,   // 	lw	v0,0(v0)
 0xafa207ec,   // 	sw	v0,2028(sp)
-0x24060005,   // 	li	a2,250
+0x240600fa,   // 	li	a2,250
 0x27b10404,   // 	addiu	s1,sp,1028
 0x02202825,   // 	move	a1,s1
 0x27b0001c,   // 	addiu	s0,sp,28
 0x02002025,   // 	move	a0,s0
 0x0c00000a,   // 	jal	10 <copy_array>
 0x00000000,   // 	nop
-0x24050005,   // 	li	a1,250
+0x240500fa,   // 	li	a1,250
 0x02002025,   // 	move	a0,s0
 0x0c00001e,   // 	jal	30 <bubble_sort>
 0x00000000,   // 	nop
 0x00409025,   // 	move	s2,v0
-0x24050005,   // 	li	a1,250
+0x240500fa,   // 	li	a1,250
 0x02202025,   // 	move	a0,s1
 0x0c000046,   // 	jal 70 <insertion_sort>
 0x00000000,   // 	nop
 0x00409825,   // 	move	s3,v0
-0x24060005,   // 	li	a2,250
+0x240600fa,   // 	li	a2,250
 0x02202825,   // 	move	a1,s1
 0x02002025,   // 	move	a0,s0
 0x0c000078,   // 	jal	120 <check_result>
