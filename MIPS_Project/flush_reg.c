@@ -40,6 +40,8 @@ void Flush_ID_EX(ID_EX *IDEX_ptr)
 	IDEX_ptr->sign_ext_imm = 0;
 	IDEX_ptr->OP_Code = 0;
 	IDEX_ptr->branch = 0;
+	IDEX_ptr->WB_reg = 0;
+	IDEX_ptr->I_format = 0;
 }
 
 void Flush_EX_MEM(EX_MEM *EXMEM_ptr)
