@@ -2,6 +2,7 @@
 #define MIPS_PROCESSOR_H_INCLUDED
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "pipe_reg.h"
 #include "cache.h"
 #include "flush_reg.h"

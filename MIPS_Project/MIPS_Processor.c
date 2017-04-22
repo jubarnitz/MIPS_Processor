@@ -45,10 +45,17 @@ int main()
 //        }
 
 	}
-	printf("memory[6] = %d\n", memory[6]);
+	// for Program 1, prints in decimal
+	/*printf("memory[6] = %d\n", memory[6]);
 	printf("memory[7] = %d\n", memory[7]);
 	printf("memory[8] = %d\n", memory[8]);
-	printf("memory[9] = %d\n", memory[9]);
+	printf("memory[9] = %d\n", memory[9]);*/
+
+    // for Program 2, prints 7, 8, & 9 in hex
+	printf("memory[6] = %d\n", memory[6]);
+	printf("memory[7] = %#010x\n", memory[7]);
+	printf("memory[8] = %#010x\n", memory[8]);
+	printf("memory[9] = %#010x\n", memory[9]);
 
 }
 
@@ -787,8 +794,8 @@ void EX()
         // ex lhu $t0, 6($t0) => a[6/4] => a[1] and halfword is (6 / 2) = 3 % 2 = halfword 1 of word 1
         EXMEM_SHADOW.ALU_result = (ALU_A >> 2) + (ALU_B >> 2);
         printf("In EX() load/store access = memory[ %d ]\n ", EXMEM_SHADOW.ALU_result);
-        EXMEM_SHADOW.which_byte = ALU_B % 4;
-        EXMEM_SHADOW.which_half = (ALU_B >> 1) % 2;
+        EXMEM_SHADOW.which_byte = (ALU_A + ALU_B) % 4;
+        EXMEM_SHADOW.which_half = ((ALU_A + ALU_B) >> 1) % 2;
     }
     //I instruction
     else
