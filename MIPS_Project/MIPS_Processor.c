@@ -74,12 +74,12 @@ void IF()
 		PC.pc = IDEX.branch_target;
 	}
     printf("PC.pc = %d\n", PC.pc);
-	data_valid = icache_access(PC.pc, &instr);
-	if(!data_valid)
-    {
-        stall_pipe = 1;
-    }
-	//unsigned int instr = memory[PC.pc];
+//	data_valid = icache_access(PC.pc, &instr);
+//	if(!data_valid)
+//    {
+//       stall_pipe = 1;
+//    }
+	instr = memory[PC.pc];
 
 	printf("instruction = 0x%08x\n", instr);
 
@@ -591,10 +591,7 @@ int ID()
         Flush_IF_ID(&IFID_SHADOW);
         printf("\nID(): Load Data Hazard Stalling\n");
     }
-    if(clock_cycle == 1790)
-    {
-        printf("IDEX.OP_Code = %d; IDEX.WB_reg = %d; \n", IDEX.OP_Code, IDEX.WB_reg);
-    }
+
     // I format instructions: addi, addiu, andi, xori, beq, bne, bgtz, bltz, blez, lb, lbu, lhu, lui, lw, ori, slti, sltiu, sb, sh, sw,
     // Check for data dependence upon previous instruction from branch
     if( (( (EXMEM.Mem_Read) && ((EXMEM.WB_reg == IFID.reg_RT) || (EXMEM.WB_reg == IFID.reg_RS)) && (EXMEM.WB_reg != 0x00) )
@@ -652,7 +649,14 @@ void EX()
         && !( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg == IDEX.reg_RT) )
         && (MEMWB.WB_reg == IDEX.reg_RT) )
     {
-        ALU_B = MEMWB.ALU_result;
+        if(MEMWB.Mem_to_Reg)
+        {
+            ALU_B = MEMWB.Data_Mem_result;
+        }
+        else
+        {
+            ALU_B = MEMWB.ALU_result;
+        }
         EXMEM_SHADOW.Reg_RT_val = MEMWB.Data_Mem_result;
         printf("EX(): Forwarding from MEMWB to RT: ALU B = %d and RT_val = %d\n", ALU_A, EXMEM_SHADOW.Reg_RT_val);
     }
@@ -713,7 +717,7 @@ void EX()
             case(0x8): // jr instruction leave black
                 break;
             case(0xA):
-                if(EXMEM_SHADOW.Reg_RT_val == 0)
+                if(ALU_B == 0)
                 {
                     EXMEM_SHADOW.ALU_result = ALU_A;
                 }
@@ -723,7 +727,7 @@ void EX()
                 }
                 break;
             case(0xB):
-                if(EXMEM_SHADOW.Reg_RT_val != 0)
+                if(ALU_B != 0)
                 {
                     EXMEM_SHADOW.ALU_result = ALU_A;
                 }
