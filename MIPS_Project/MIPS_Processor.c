@@ -642,7 +642,14 @@ void EX()
         && !( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg == IDEX.reg_RT) )
         && (MEMWB.WB_reg == IDEX.reg_RT) )
     {
-        ALU_B = MEMWB.ALU_result;
+        if(MEMWB.Mem_to_Reg)
+ +        {
+ +            ALU_B = MEMWB.Data_Mem_result;
+ +        }
+ +        else
+ +        {
+ +            ALU_B = MEMWB.ALU_result;
+ +        }
         EXMEM_SHADOW.Reg_RT_val = MEMWB.Data_Mem_result;
         printf("EX(): Forwarding from MEMWB to RT: ALU B = %d and RT_val = %d\n", ALU_A, EXMEM_SHADOW.Reg_RT_val);
     }
@@ -703,7 +710,7 @@ void EX()
             case(0x8): // jr instruction leave black
                 break;
             case(0xA):
-                if(EXMEM_SHADOW.Reg_RT_val == 0)
+                if(ALU_B == 0)
                 {
                     EXMEM_SHADOW.ALU_result = ALU_A;
                 }
@@ -713,7 +720,7 @@ void EX()
                 }
                 break;
             case(0xB):
-                if(EXMEM_SHADOW.Reg_RT_val != 0)
+                if(ALU_B != 0)
                 {
                     EXMEM_SHADOW.ALU_result = ALU_A;
                 }
