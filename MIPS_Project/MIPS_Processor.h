@@ -32,6 +32,7 @@ void WB();
 void Update();
 
 int clock_cycle;
+int stall_pipe;
 
 IF_ID IFID;
 ID_EX IDEX;

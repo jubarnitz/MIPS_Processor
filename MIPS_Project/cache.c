@@ -286,14 +286,34 @@ void init_memory()
 	//memory[0] = 0x01314020; //ADD $t0 $t1 $s1
 	//memory[1] = 0x214A0005; //addi $t2 $t2 $0x5
 	Initialize_Simulation_Memory();
+	main_memory_penalty = -1;
 }
 
 // returns the address of 1st instruction
 unsigned int init_i_cache()
 {
-	//add t0 t1 s1
-	i_cache[0] = 0x01314020;
-	return i_cache[0];
+	int tmp = 1;
+	// number of indexes
+	int size = (ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE;
+	printf("The number of indexes in i cache = %d\n", size);
+
+	for(int i = 0; i < size; i++)
+    {
+        i_cache.data[i] = 0;
+        i_cache.tag[i] = 0;
+        i_cache.valid[i] = 0;
+        i_cache.dirty[i] = 0;
+        tmp = (tmp << 1) + 1;
+    }
+
+    filling_i_cache = 0;
+    i_cache_hit = 0;
+
+    // only good for size 64 and block size 1
+    icache_index_mask = 0x3C;
+    icache_tag_mask = 0xFFFFFFC0;
+    printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", (icache_index_mask, icache_tag_mask));
+
 }
 
 void init_d_cache()
@@ -333,4 +353,109 @@ void Initialize_Simulation_Memory(void){
 	for (int i=0; i < MEMORY_SIZE; i++){
 		memory[i] = program_image[i];
 	}
+}
+
+int icache_access(unsigned int address, unsigned int *data)
+{
+    int data_valid = 0;
+    unsigned int cache_data;
+
+    printf("\nIn icache_access()\n");
+    printf("icache_index_mask = %d, icache_tag_mask = 0x%08x\n", (icache_index_mask, icache_tag_mask));
+    unsigned int request_index = (address & icache_index_mask) >> 2;
+    unsigned int request_tag = (address & icache_tag_mask) >> 6;
+    printf("Adddress = %u\n", address);
+    printf("Request index = %u, Request tag = %u\n", (request_index, request_tag));
+
+    // Cache Hit
+    if( !(filling_i_cache)
+       && ((i_cache.tag[request_index] == request_tag) && (i_cache.valid[request_index])) )
+    {
+        printf("I cache hit!\n");
+        i_cache_hit = 1;
+        *data = i_cache.data[request_index];
+        data_valid = 1;
+    }
+
+    // cache miss
+    else
+    {
+        printf("I cache miss!\n");
+        data_valid = memory_access(1, address, &cache_data, ICACHE_BLOCK_SIZE);
+
+        // main memory returned valid data
+        if(data_valid)
+        {
+            printf("data is ready from main memory!\n");
+            i_cache.data[request_index] = cache_data;
+            i_cache.tag[request_index] = request_tag;
+            i_cache.valid[request_index] = 1;
+            filling_i_cache = 0;
+            data_valid = 0;
+        }
+        // still waiting on main memory
+        else
+        {
+            printf("Still waiting for data from main memory!\n");
+            filling_i_cache = 1;
+            data_valid = 0;
+        }
+    }
+    return data_valid;
+
+}
+
+int memory_access(int read, unsigned int address, unsigned int *data, int block_size)
+{
+    printf("\nIn memory_access()\n");
+    printf("Main Mem penalty = %d\n", main_memory_penalty);
+    int data_valid = 0;
+    // read
+    if(read)
+    {
+        printf("Request from memory is a read\n");
+        // 1st block of early start
+        if( (main_memory_penalty % 8 == 0) && (main_memory_penalty >= 0) )
+        {
+            printf("1st block is ready!\n");
+            *data = memory[address];
+            data_valid = 1;
+        }
+        // following blocks of early start
+        else if( (main_memory_penalty % 2 == 0) && (main_memory_penalty > 0) && (block_size > 1) )
+        {
+            printf("following block is ready\n");
+            data = memory[address + 1];
+            data_valid = 1;
+        }
+        // waiting for data
+        else if(main_memory_penalty > 0)
+        {
+            printf("Still waiting for penalty\n");
+            data_valid = 0;
+        }
+        // main memory handle request
+        else
+        {
+            printf("main mem will handle new request\n");
+            main_memory_penalty = 8;
+            if(block_size > 1)
+            {
+                for(int i = 0; i < (block_size -1); i++)
+                {
+                    main_memory_penalty += 2;
+                }
+            }
+            printf("the new penalty is %d\n", main_memory_penalty);
+            data_valid = 0;
+        }
+
+    }
+    // write
+    else
+    {
+        printf("Request to main memory is a Write!\n");
+    }
+    printf("Main Memory data valid = %d\n\n", data_valid);
+    return data_valid;
 }

@@ -10,6 +10,7 @@
 int main()
 {
 	clock_cycle = 0;
+	stall_pipe = 0;
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
 
@@ -22,6 +23,7 @@ int main()
 	init_reg();
 
 	PC.pc = memory[5];
+	init_i_cache();
 	//init_d_cache();
 
 	/*----------  Execute MIPS program  ----------*/
@@ -61,6 +63,9 @@ int main()
 
 void IF()
 {
+    int data_valid;
+    unsigned int instr;
+    printf("In Instruction Fetch stage\n");
     // Branch Logic
 	PC.pc_src = IDEX.branch;
 	if(PC.pc_src)
@@ -68,11 +73,16 @@ void IF()
 		// go to instruction from branch
 		PC.pc = IDEX.branch_target;
 	}
+    printf("PC.pc = %d\n", PC.pc);
+	data_valid = icache_access(PC.pc, &instr);
+	if(!data_valid)
+    {
+        stall_pipe = 1;
+    }
+	//unsigned int instr = memory[PC.pc];
 
-	unsigned int instr = memory[PC.pc];
-	printf("In Instruction Fetch stage\n");
 	printf("instruction = 0x%08x\n", instr);
-	printf("PC.pc = %d\n", PC.pc);
+
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;
@@ -997,11 +1007,24 @@ void WB()
 
 void Update()
 {
-	IFID = IFID_SHADOW;
-	IDEX = IDEX_SHADOW;
-	EXMEM = EXMEM_SHADOW;
-	MEMWB = MEMWB_SHADOW;
+	if(stall_pipe)
+    {
+        IFID = IFID;
+        IDEX = IDEX;
+        EXMEM = EXMEM;
+        MEMWB = MEMWB;
+        PC.pc -= 1;
+        stall_pipe = 0;
+    }
+    else
+    {
+        IFID = IFID_SHADOW;
+        IDEX = IDEX_SHADOW;
+        EXMEM = EXMEM_SHADOW;
+        MEMWB = MEMWB_SHADOW;
+    }
 	clock_cycle++;
+	main_memory_penalty--;
 
 	printf("v0 = %d\n", reg[2]);
 	printf("v1 = %d\n", reg[3]);

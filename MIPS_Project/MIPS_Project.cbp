@@ -43,6 +43,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="flush_reg.h" />
+		<Unit filename="memory.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="memory.h" />
 		<Unit filename="pipe_reg.h" />
 		<Extensions>
 			<code_completion />
