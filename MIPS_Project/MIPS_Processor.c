@@ -74,12 +74,12 @@ void IF()
 		PC.pc = IDEX.branch_target;
 	}
     printf("PC.pc = %d\n", PC.pc);
-//	data_valid = icache_access(PC.pc, &instr);
-//	if(!data_valid)
-//    {
-//       stall_pipe = 1;
-//    }
-	instr = memory[PC.pc];
+	data_valid = icache_access(PC.pc, &instr);
+	if(!data_valid)
+    {
+       stall_pipe = 1;
+    }
+	//instr = memory[PC.pc];
 
 	printf("instruction = 0x%08x\n", instr);
 
@@ -1028,7 +1028,8 @@ void Update()
         MEMWB = MEMWB_SHADOW;
     }
 	clock_cycle++;
-	main_memory_penalty--;
+	//main_memory_penalty--;
+	mem_penalty_count++;
 
 	printf("v0 = %d\n", reg[2]);
 	printf("v1 = %d\n", reg[3]);

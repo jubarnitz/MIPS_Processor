@@ -12,6 +12,8 @@ void init_memory()
 	//memory[1] = 0x214A0005; //addi $t2 $t2 $0x5
 	Initialize_Simulation_Memory();
 	main_memory_penalty = -1;
+    mem_first_entry_filled = 0;
+    mem_penalty_count = 0;
 }
 
 // returns the address of 1st instruction
@@ -132,6 +134,7 @@ int icache_access(unsigned int address, unsigned int *data)
 
 int memory_access(int read, unsigned int address, unsigned int *data, int block_size)
 {
+    // todo add a first block filled boolean. So that 2nd block isn't filled first
     printf("\nIn memory_access()\n");
     printf("Main Mem penalty = %d\n", main_memory_penalty);
     int data_valid = 0;
@@ -140,18 +143,23 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
     {
         printf("Request from memory is a read\n");
         // 1st block of early start
-        if( (main_memory_penalty % 8 == 0) && (main_memory_penalty >= 0) )
+        if( (mem_penalty_count == 8) && (main_memory_penalty > 0) )
         {
             printf("1st block is ready!\n");
             *data = memory[address];
             data_valid = 1;
+            mem_first_entry_filled = 1;
         }
         // following blocks of early start
-        else if( (main_memory_penalty % 2 == 0) && (main_memory_penalty > 0) && (block_size > 1) )
+        else if( (mem_penalty_count % 2 == 0) && (main_memory_penalty > 0) && (block_size > 1) && (mem_first_entry_filled) )
         {
             printf("following block is ready\n");
             data = memory[address + 1];
             data_valid = 1;
+            if(mem_penalty_count == main_memory_penalty)
+            {
+                main_memory_penalty = 0;
+            }
         }
         // waiting for data
         else if(main_memory_penalty > 0)
@@ -163,10 +171,11 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
         else
         {
             printf("main mem will handle new request\n");
+            mem_first_entry_filled = 0;
             main_memory_penalty = 8;
             if(block_size > 1)
             {
-                for(int i = 0; i < (block_size -1); i++)
+                for(int i = 0; i < (block_size - 1); i++)
                 {
                     main_memory_penalty += 2;
                 }

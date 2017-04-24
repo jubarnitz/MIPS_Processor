@@ -31,6 +31,8 @@ int d_cache_hit;
 int i_cache_penalty;
 int d_cache_penalty;
 int main_memory_penalty;
+int mem_first_entry_filled;
+int mem_penalty_count;
 
 unsigned int memory[MEMORY_SIZE];
 
