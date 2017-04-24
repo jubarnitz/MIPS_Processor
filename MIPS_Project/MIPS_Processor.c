@@ -764,7 +764,7 @@ void EX()
                 }
                 break;
             case(0x2B): //sltu instruction
-                if(ALU_B < EXMEM_SHADOW.Reg_RT_val)
+                if(ALU_A < EXMEM_SHADOW.Reg_RT_val)
                 {
                     EXMEM_SHADOW.ALU_result = 1;
                 }
@@ -786,7 +786,7 @@ void EX()
     // seb instruction (sign-extend byte)
     else if (IDEX.OP_Code == 0x1F)
     {
-        char byte_of_RT = IDEX.Reg_RT_val; // get just a byte of RT
+        char byte_of_RT = ALU_B; // get just a byte of RT
         EXMEM_SHADOW.ALU_result = byte_of_RT; // now sign extend it
     }
     // lb, lbu, lhu lw, sb, sh, and sw instruction
