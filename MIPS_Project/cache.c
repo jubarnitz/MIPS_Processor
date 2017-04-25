@@ -88,11 +88,11 @@ int icache_access(unsigned int address, unsigned int *data)
     unsigned int cache_data;
 
     printf("\nIn icache_access()\n");
-    printf("icache_index_mask = %d, icache_tag_mask = 0x%08x\n", (icache_index_mask, icache_tag_mask));
+    printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
     unsigned int request_index = (address & icache_index_mask) >> 2;
     unsigned int request_tag = (address & icache_tag_mask) >> 6;
     printf("Adddress = %u\n", address);
-    printf("Request index = %u, Request tag = %u\n", (request_index, request_tag));
+    printf("Request index = %u, Request tag = %u\n", request_index, request_tag);
 
     // Cache Hit
     if( !(filling_i_cache)
@@ -149,16 +149,22 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
             *data = memory[address];
             data_valid = 1;
             mem_first_entry_filled = 1;
+            if(mem_penalty_count == main_memory_penalty)
+            {
+                main_memory_penalty = 0;
+                mem_penalty_count = 0;
+            }
         }
         // following blocks of early start
         else if( (mem_penalty_count % 2 == 0) && (main_memory_penalty > 0) && (block_size > 1) && (mem_first_entry_filled) )
         {
             printf("following block is ready\n");
-            data = memory[address + 1];
+            *data = memory[address + 1];
             data_valid = 1;
             if(mem_penalty_count == main_memory_penalty)
             {
                 main_memory_penalty = 0;
+                mem_penalty_count = 0;
             }
         }
         // waiting for data
