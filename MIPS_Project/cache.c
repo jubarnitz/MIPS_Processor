@@ -37,9 +37,11 @@ unsigned int init_i_cache()
     i_cache_hit = 0;
 
     // only good for size 64 and block size 1
-    icache_index_mask = 0x3C;
-    icache_tag_mask = 0xFFFFFFC0;
-    printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", (icache_index_mask, icache_tag_mask));
+    icache_index_mask = 0xF;
+    icache_tag_mask = 0xFFFFFFF0;
+    //icache_index_mask = 0x3C;
+    //icache_tag_mask = 0xFFFFFFC0;
+    printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
 
 }
 
@@ -89,8 +91,8 @@ int icache_access(unsigned int address, unsigned int *data)
 
     printf("\nIn icache_access()\n");
     printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
-    unsigned int request_index = (address & icache_index_mask) >> 2;
-    unsigned int request_tag = (address & icache_tag_mask) >> 6;
+    unsigned int request_index = (address & icache_index_mask);
+    unsigned int request_tag = (address & icache_tag_mask) >> 4;
     printf("Adddress = %u\n", address);
     printf("Request index = %u, Request tag = %u\n", request_index, request_tag);
 
@@ -102,6 +104,7 @@ int icache_access(unsigned int address, unsigned int *data)
         i_cache_hit = 1;
         *data = i_cache.data[request_index];
         data_valid = 1;
+        mem_penalty_count = 0;
     }
 
     // cache miss

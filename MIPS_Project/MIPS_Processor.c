@@ -11,6 +11,7 @@ int main()
 {
 	clock_cycle = 0;
 	stall_pipe = 0;
+	data_hazard = 0;
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
 
@@ -64,7 +65,7 @@ int main()
 void IF()
 {
     int data_valid;
-    unsigned int instr;
+    unsigned int instr = 0;
     printf("In Instruction Fetch stage\n");
     // Branch Logic
 	PC.pc_src = IDEX.branch;
@@ -587,6 +588,7 @@ int ID()
         //stall the pipeline
         //prevent pc from incrementing
         PC.pc = PC.pc - 1;
+        data_hazard = 1;
         // flush
         Flush_IF_ID(&IFID_SHADOW);
         printf("\nID(): Load Data Hazard Stalling\n");
@@ -606,6 +608,7 @@ int ID()
         PC.pc = PC.pc -1;
         IFID_SHADOW = IFID;
         Flush_ID_EX(&IDEX_SHADOW);
+        data_hazard = 1;
     }
 	return 0;
 }
@@ -1017,7 +1020,12 @@ void Update()
         IDEX = IDEX;
         EXMEM = EXMEM;
         MEMWB = MEMWB;
-        PC.pc -= 1;
+        if(data_hazard)
+        {
+            data_hazard = 0; // if there's a data hazard, pc has already been decremented
+        } else {
+            PC.pc -= 1; // only decrement pc if no data hazard
+        }
         stall_pipe = 0;
     }
     else
