@@ -9,9 +9,11 @@
 
 int main()
 {
+
 	clock_cycle = 0;
 	stall_pipe = 0;
 	data_hazard = 0;
+
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
 
@@ -42,12 +44,12 @@ int main()
 // clock cycle == 1772 finished copy_array
 // clock cycle ==  1810 start bubble sort
 // clock cycle == 554622
-		if(clock_cycle >= 6756)
+/*		if(clock_cycle >= 6756)
         {
             //break;
             printf("stop!!!");
         }
-
+*/
 	}
 	// for Program 1, prints in decimal
 	/*printf("memory[6] = %d\n", memory[6]);
@@ -60,6 +62,7 @@ int main()
 	printf("memory[7] = %#010x\n", memory[7]);
 	printf("memory[8] = %#010x\n", memory[8]);
 	printf("memory[9] = %#010x\n", memory[9]);
+
 
 }
 
@@ -76,6 +79,16 @@ void IF()
 		PC.pc = IDEX.branch_target;
 	}
     printf("PC.pc = %d\n", PC.pc);
+    if (PC.pc == 10)
+    {
+        printf("target pc reached\n");
+    }
+    if (clock_cycle >= 30)
+    {
+        printf("target clock cycle reached\n");
+    }
+
+
 	data_valid = icache_access(PC.pc, &instr);
 	if(!data_valid)
     {
@@ -84,7 +97,14 @@ void IF()
 	//instr = memory[PC.pc];
 
 	printf("instruction = 0x%08x\n", instr);
-
+	if (instr != 0)
+	{
+        printf("new instruction\n");
+	}
+    if(instr == 65011720)
+    {
+        printf("jr instruction\n");
+    }
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;

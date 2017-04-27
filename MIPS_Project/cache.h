@@ -5,7 +5,7 @@
 #include "pipe_reg.h"
 #include <math.h>
 
-#define ICACHE_SIZE 64              // bytes
+#define ICACHE_SIZE 128              // bytes
 #define DCACHE_SIZE 256             // bytes
 #define ICACHE_BLOCK_SIZE 1         // words
 #define DCACHE_BLOCK_SIZE 1         // words
@@ -22,11 +22,14 @@ struct Cache
 };
 
 
-unsigned int icache_index_mask;
-unsigned int icache_tag_mask;
+//unsigned int icache_index_mask;
+//unsigned int icache_tag_mask;
 unsigned int icache_entries;
 unsigned int block_offset_bits;
 unsigned int block_index;
+
+unsigned int block_offset;
+unsigned int mem_base_addr;
 
 int filling_i_cache;
 int filling_d_cache;

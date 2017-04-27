@@ -22,29 +22,33 @@ unsigned int init_i_cache()
 	int tmp = 1;
 	// number of indexes
 	int size = (ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE;
+	int data_size = (ICACHE_SIZE / 4);
 	printf("The number of indexes in i cache = %d\n", size);
 
 	for(int i = 0; i < size; i++)
     {
-        i_cache.data[i] = 0;
         i_cache.tag[i] = 0;
         i_cache.valid[i] = 0;
         i_cache.dirty[i] = 0;
         tmp = (tmp << 1) + 1;
+    }
+    for(int i = 0; i < data_size; i++)
+    {
+        i_cache.data[i] = 0;
     }
 
     filling_i_cache = 0;
     i_cache_hit = 0;
 
     // only good for size 64 and block size 1
-    icache_index_mask = 0xF;
-    icache_tag_mask = 0xFFFFFFF0;
+    //icache_index_mask = 0xF;
+    //icache_tag_mask = 0xFFFFFFF0;
     // calculate
     icache_entries = (ICACHE_SIZE / 4);
     block_offset_bits = log(ICACHE_BLOCK_SIZE)/log(2);
 
 
-    printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
+    //printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
 
 }
 
@@ -90,14 +94,14 @@ void Initialize_Simulation_Memory(void){
 int icache_access(unsigned int address, unsigned int *data)
 {
     int data_valid = 0;
-    unsigned int cache_data;
-    unsigned int icache_tag;
-    unsigned int icache_remainder;
-    unsigned int block_offset;
-    unsigned int cache_addr;
+    unsigned int cache_data = 0;
+    unsigned int icache_tag = 0;
+    unsigned int icache_remainder = 0;
+    unsigned int cache_addr = 0;
 
     // calculate
-    icache_tag = address / (icache_entries/ICACHE_BLOCK_SIZE);
+    icache_tag = address / icache_entries;
+    //icache_tag = address / (icache_entries/ICACHE_BLOCK_SIZE);
     icache_remainder = address % icache_entries;
     block_index = icache_remainder / ICACHE_BLOCK_SIZE;
     block_offset = icache_remainder % ICACHE_BLOCK_SIZE;
@@ -119,13 +123,20 @@ int icache_access(unsigned int address, unsigned int *data)
         *data = i_cache.data[cache_addr];
         data_valid = 1;
     }
-    else if ( (filling_i_cache) && (mem_penalty_count >= 9) && ((int)block_offset <= (int)((mem_penalty_count - 9) / 2)) )
+    else if ( (filling_i_cache) && (mem_penalty_count >= 9) && ((int)block_offset <= (int)((mem_penalty_count - 9) / 2)) && ((address>>block_offset_bits)<<block_offset_bits == mem_base_addr) )
     {
         printf("I cache early start hit!\n");
-        //printf("unsigned = %u, signed = %d\n", ((mem_penalty_count - 8) / 2), (int)(mem_penalty_count - 8) / 2));
         i_cache_hit = 1;
         *data = i_cache.data[cache_addr];
         data_valid = 1;
+        if(mem_penalty_count == main_memory_penalty)
+        {
+            main_memory_penalty = 0;
+            mem_penalty_count = 0;
+            filling_i_cache = 0;
+            i_cache.valid[block_index] = 1;
+        }
+
     }
 
     // cache miss
@@ -138,7 +149,7 @@ int icache_access(unsigned int address, unsigned int *data)
         if(data_valid)
         {
             printf("data is ready from main memory!\n");
-            i_cache.data[cache_addr] = cache_data;
+            //i_cache.data[cache_addr] = cache_data;
             i_cache.tag[block_index] = icache_tag;
             data_valid = 0;
         }
@@ -169,7 +180,12 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
         if( (mem_penalty_count == 8) && (main_memory_penalty > 0) )
         {
             printf("1st block is ready!\n");
-            *data = memory[address];
+            //*data = memory[address];
+            // fill the whole block now (each word still becomes 'valid' separately)
+            for (int i=0; i<ICACHE_BLOCK_SIZE; i++)
+            {
+                i_cache.data[(block_index << block_offset_bits) + i] = memory[mem_base_addr + i];
+            }
             data_valid = 1;
             mem_first_entry_filled = 1;
             if(mem_penalty_count == main_memory_penalty)
@@ -183,17 +199,20 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
         // following blocks of early start
         else if( (mem_penalty_count % 2 == 0) && (main_memory_penalty > 0) && (block_size > 1) && (mem_first_entry_filled) )
         {
-            printf("following block is ready\n");
-            *data = memory[address + 1];
-            data_valid = 1;
+            //*data = memory[address];
+            if ( ((address>>block_offset_bits)<<block_offset_bits) == mem_base_addr )
+            {
+                printf("following block is ready\n");
+                data_valid = 1;
+            }
             if(mem_penalty_count == main_memory_penalty)
             {
                 main_memory_penalty = 0;
                 mem_penalty_count = 0;
                 filling_i_cache = 0;
                 i_cache.valid[block_index] = 1;
-           }
-        }
+            }
+       }
         // waiting for data
         else if(main_memory_penalty > 0)
         {
@@ -207,6 +226,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
             mem_first_entry_filled = 0;
             main_memory_penalty = 8;
             mem_penalty_count = 0;
+            mem_base_addr = (address >> block_offset_bits) << block_offset_bits;
             if(block_size > 1)
             {
                 for(int i = 0; i < (block_size - 1); i++)
