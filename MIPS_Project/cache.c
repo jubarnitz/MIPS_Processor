@@ -39,8 +39,11 @@ unsigned int init_i_cache()
     // only good for size 64 and block size 1
     icache_index_mask = 0xF;
     icache_tag_mask = 0xFFFFFFF0;
-    //icache_index_mask = 0x3C;
-    //icache_tag_mask = 0xFFFFFFC0;
+    // calculate
+    icache_entries = (ICACHE_SIZE / 4);
+    block_offset_bits = log(ICACHE_BLOCK_SIZE)/log(2);
+
+
     printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
 
 }
@@ -88,23 +91,41 @@ int icache_access(unsigned int address, unsigned int *data)
 {
     int data_valid = 0;
     unsigned int cache_data;
+    unsigned int icache_tag;
+    unsigned int icache_remainder;
+    unsigned int block_offset;
+    unsigned int cache_addr;
+
+    // calculate
+    icache_tag = address / (icache_entries/ICACHE_BLOCK_SIZE);
+    icache_remainder = address % icache_entries;
+    block_index = icache_remainder / ICACHE_BLOCK_SIZE;
+    block_offset = icache_remainder % ICACHE_BLOCK_SIZE;
+    cache_addr = (block_index << block_offset_bits) + block_offset;
 
     printf("\nIn icache_access()\n");
-    printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
-    unsigned int request_index = (address & icache_index_mask);
-    unsigned int request_tag = (address & icache_tag_mask) >> 4;
+    //printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
+    //unsigned int request_index = (address & icache_index_mask);
+    //unsigned int request_tag = (address & icache_tag_mask) >> 4;
     printf("Adddress = %u\n", address);
-    printf("Request index = %u, Request tag = %u\n", request_index, request_tag);
+    //printf("Request index = %u, Request tag = %u\n", request_index, request_tag);
 
     // Cache Hit
     if( !(filling_i_cache)
-       && ((i_cache.tag[request_index] == request_tag) && (i_cache.valid[request_index])) )
+       && ((i_cache.tag[block_index] == icache_tag) && (i_cache.valid[block_index])) )
     {
         printf("I cache hit!\n");
         i_cache_hit = 1;
-        *data = i_cache.data[request_index];
+        *data = i_cache.data[cache_addr];
         data_valid = 1;
-        mem_penalty_count = 0;
+    }
+    else if ( (filling_i_cache) && (mem_penalty_count >= 9) && ((int)block_offset <= (int)((mem_penalty_count - 9) / 2)) )
+    {
+        printf("I cache early start hit!\n");
+        //printf("unsigned = %u, signed = %d\n", ((mem_penalty_count - 8) / 2), (int)(mem_penalty_count - 8) / 2));
+        i_cache_hit = 1;
+        *data = i_cache.data[cache_addr];
+        data_valid = 1;
     }
 
     // cache miss
@@ -117,10 +138,8 @@ int icache_access(unsigned int address, unsigned int *data)
         if(data_valid)
         {
             printf("data is ready from main memory!\n");
-            i_cache.data[request_index] = cache_data;
-            i_cache.tag[request_index] = request_tag;
-            i_cache.valid[request_index] = 1;
-            filling_i_cache = 0;
+            i_cache.data[cache_addr] = cache_data;
+            i_cache.tag[block_index] = icache_tag;
             data_valid = 0;
         }
         // still waiting on main memory
@@ -131,6 +150,7 @@ int icache_access(unsigned int address, unsigned int *data)
             data_valid = 0;
         }
     }
+
     return data_valid;
 
 }
@@ -156,6 +176,8 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
             {
                 main_memory_penalty = 0;
                 mem_penalty_count = 0;
+                filling_i_cache = 0;
+                i_cache.valid[block_index] = 1;
             }
         }
         // following blocks of early start
@@ -168,7 +190,9 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
             {
                 main_memory_penalty = 0;
                 mem_penalty_count = 0;
-            }
+                filling_i_cache = 0;
+                i_cache.valid[block_index] = 1;
+           }
         }
         // waiting for data
         else if(main_memory_penalty > 0)
@@ -182,6 +206,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
             printf("main mem will handle new request\n");
             mem_first_entry_filled = 0;
             main_memory_penalty = 8;
+            mem_penalty_count = 0;
             if(block_size > 1)
             {
                 for(int i = 0; i < (block_size - 1); i++)

@@ -42,10 +42,11 @@ int main()
 // clock cycle == 1772 finished copy_array
 // clock cycle ==  1810 start bubble sort
 // clock cycle == 554622
-//		if(clock_cycle > 700000)
-//        {
-//            break;
-//        }
+		if(clock_cycle >= 6756)
+        {
+            //break;
+            printf("stop!!!");
+        }
 
 	}
 	// for Program 1, prints in decimal
@@ -1034,6 +1035,7 @@ void Update()
         IDEX = IDEX_SHADOW;
         EXMEM = EXMEM_SHADOW;
         MEMWB = MEMWB_SHADOW;
+        data_hazard = 0;
     }
 	clock_cycle++;
 	//main_memory_penalty--;

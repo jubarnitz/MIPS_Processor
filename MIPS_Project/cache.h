@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "pipe_reg.h"
+#include <math.h>
 
 #define ICACHE_SIZE 64              // bytes
 #define DCACHE_SIZE 256             // bytes
@@ -14,7 +15,7 @@
 
 struct Cache
 {
-    unsigned int data[(ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE];
+    unsigned int data[(ICACHE_SIZE / 4)];
     unsigned int tag[(ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE];
     unsigned int valid[(ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE];
     unsigned int dirty[(ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE];
@@ -23,6 +24,9 @@ struct Cache
 
 unsigned int icache_index_mask;
 unsigned int icache_tag_mask;
+unsigned int icache_entries;
+unsigned int block_offset_bits;
+unsigned int block_index;
 
 int filling_i_cache;
 int filling_d_cache;
