@@ -13,12 +13,20 @@
 #define NUM_REGISTERS 32
 #define MEMORY_SIZE 3000            // words
 
-struct Cache
+struct I_Cache
 {
     unsigned int data[(ICACHE_SIZE / 4)];
     unsigned int tag[(ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE];
     unsigned int valid[(ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE];
     unsigned int dirty[(ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE];
+};
+
+struct D_Cache
+{
+    unsigned int data[(DCACHE_SIZE / 4)];
+    unsigned int tag[(DCACHE_SIZE / 4) / DCACHE_BLOCK_SIZE];
+    unsigned int valid[(DCACHE_SIZE / 4) / DCACHE_BLOCK_SIZE];
+    unsigned int dirty[(DCACHE_SIZE / 4) / DCACHE_BLOCK_SIZE];
 };
 
 
@@ -45,9 +53,9 @@ int mem_penalty_count;
 
 unsigned int memory[MEMORY_SIZE];
 
-struct Cache i_cache;
+struct I_Cache i_cache;
 
-struct Cache d_cache;
+struct D_Cache d_cache;
 
 unsigned int reg[NUM_REGISTERS];
 

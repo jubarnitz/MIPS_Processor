@@ -78,16 +78,15 @@ void IF()
 		// go to instruction from branch
 		PC.pc = IDEX.branch_target;
 	}
-    //printf("PC.pc = %d\n", PC.pc);
+    printf("PC.pc = %d\n", PC.pc);
     if (PC.pc == 140)
-    {
-        printf("target pc reached\n");
-    }
-//    if (clock_cycle >= 30)
-//    {
-//        printf("target clock cycle reached\n");
-//    }
+    { printf("target pc reached\n"); }
 
+    if (clock_cycle >= 3290)
+    { printf("target clock cycle reached\n"); }
+
+    if (d_cache.valid[0] > 1)
+    { printf("d_cache.valid[0] is out of range\n"); }
 
 
     data_valid = icache_access(PC.pc, &instr);
@@ -98,14 +97,12 @@ void IF()
 	//instr = memory[PC.pc];
 
 	printf("instruction = 0x%08x\n", instr);
+
 //	if (instr != 0)
-//	{
-//        printf("new instruction\n");
-//	}
+//	{ printf("new instruction\n"); }
+
     if(instr == 65011720)
-    {
-        printf("jr instruction\n");
-    }
+    { printf("jr instruction\n"); }
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;
