@@ -27,7 +27,7 @@ int main()
 
 	PC.pc = memory[5];
 	init_i_cache();
-	//init_d_cache();
+	init_d_cache();
 
 	/*----------  Execute MIPS program  ----------*/
 
@@ -78,18 +78,19 @@ void IF()
 		// go to instruction from branch
 		PC.pc = IDEX.branch_target;
 	}
-    printf("PC.pc = %d\n", PC.pc);
-    if (PC.pc == 10)
+    //printf("PC.pc = %d\n", PC.pc);
+    if (PC.pc == 140)
     {
         printf("target pc reached\n");
     }
-    if (clock_cycle >= 30)
-    {
-        printf("target clock cycle reached\n");
-    }
+//    if (clock_cycle >= 30)
+//    {
+//        printf("target clock cycle reached\n");
+//    }
 
 
-	data_valid = icache_access(PC.pc, &instr);
+
+    data_valid = icache_access(PC.pc, &instr);
 	if(!data_valid)
     {
        stall_pipe = 1;
@@ -97,10 +98,10 @@ void IF()
 	//instr = memory[PC.pc];
 
 	printf("instruction = 0x%08x\n", instr);
-	if (instr != 0)
-	{
-        printf("new instruction\n");
-	}
+//	if (instr != 0)
+//	{
+//        printf("new instruction\n");
+//	}
     if(instr == 65011720)
     {
         printf("jr instruction\n");
@@ -884,6 +885,7 @@ int MEM()
 {
 	printf("In Memory stage\n");
 	int word = 0;
+	int data_valid = 0;
 
 	//write data to memory
 	if(EXMEM.Mem_Wrt == 1)
@@ -948,61 +950,71 @@ int MEM()
             }
         }
 	}
-
+    // Read from mem
 	if(EXMEM.Mem_Read == 1)
 	{
-		word = memory[EXMEM.ALU_result];
-		// lw instruction
-		if(EXMEM.OP_Code == 0x23)
+		data_valid = dcache_access(1, EXMEM.ALU_result, &word);
+        if(!data_valid)
         {
-            MEMWB_SHADOW.Data_Mem_result = word;
+            stall_pipe = 1;
         }
-        // lhu instruction
-        else if(EXMEM.OP_Code == 0x25)
+        else
         {
-            if(EXMEM.which_half == 0)
+            //word = memory[EXMEM.ALU_result];
+            // lw instruction
+            if(EXMEM.OP_Code == 0x23)
             {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_0) >> 16;
+
+                MEMWB_SHADOW.Data_Mem_result = word;
+
             }
-            else if(EXMEM.which_half == 1)
+            // lhu instruction
+            else if(EXMEM.OP_Code == 0x25)
             {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_1);
+                if(EXMEM.which_half == 0)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_0) >> 16;
+                }
+                else if(EXMEM.which_half == 1)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_1);
+                }
+                else
+                {
+                    printf("Error: In lhu instruction, Unknown half word value!\n");
+                    exit(-1);
+                }
             }
-            else
+            // lb and lbu instruction
+            else if(EXMEM.OP_Code == 0x20 || EXMEM.OP_Code == 0x24)
             {
-                printf("Error: In lhu instruction, Unknown half word value!\n");
-                exit(-1);
-            }
-        }
-        // lb and lbu instruction
-        else if(EXMEM.OP_Code == 0x20 || EXMEM.OP_Code == 0x24)
-        {
-            if(EXMEM.which_byte == 0)
-            {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_0) >> 24;
-            }
-            else if(EXMEM.which_byte == 1)
-            {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_1) >> 16;
-            }
-            else if(EXMEM.which_byte == 2)
-            {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_2) >> 8;
-            }
-            else if(EXMEM.which_byte == 3)
-            {
-                MEMWB_SHADOW.Data_Mem_result = word & BIG_END_BYTE_3;
-            }
-            else //Unknown which byte value
-            {
-                printf("Error: In lbu instruction, Unknown byte value!\n");
-                exit(-1);
-            }
-            // sign-extend the result if lb instruction
-            if (EXMEM.OP_Code == 0x20)
-            {
-                char c = MEMWB_SHADOW.Data_Mem_result; // get just the one byte so we can sign-extend it
-                MEMWB_SHADOW.Data_Mem_result = c; // this sign-extends the byte
+                if(EXMEM.which_byte == 0)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_0) >> 24;
+                }
+                else if(EXMEM.which_byte == 1)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_1) >> 16;
+                }
+                else if(EXMEM.which_byte == 2)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_2) >> 8;
+                }
+                else if(EXMEM.which_byte == 3)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = word & BIG_END_BYTE_3;
+                }
+                else //Unknown which byte value
+                {
+                    printf("Error: In lbu instruction, Unknown byte value!\n");
+                    exit(-1);
+                }
+                // sign-extend the result if lb instruction
+                if (EXMEM.OP_Code == 0x20)
+                {
+                    char c = MEMWB_SHADOW.Data_Mem_result; // get just the one byte so we can sign-extend it
+                    MEMWB_SHADOW.Data_Mem_result = c; // this sign-extends the byte
+                }
             }
 
         }

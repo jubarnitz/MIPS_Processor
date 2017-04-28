@@ -5,8 +5,8 @@
 #include "pipe_reg.h"
 #include <math.h>
 
-#define ICACHE_SIZE 128              // bytes
-#define DCACHE_SIZE 256             // bytes
+#define ICACHE_SIZE 64              // bytes
+#define DCACHE_SIZE 128             // bytes
 #define ICACHE_BLOCK_SIZE 1         // words
 #define DCACHE_BLOCK_SIZE 1         // words
 
@@ -25,6 +25,7 @@ struct Cache
 //unsigned int icache_index_mask;
 //unsigned int icache_tag_mask;
 unsigned int icache_entries;
+unsigned int dcache_entries;
 unsigned int block_offset_bits;
 unsigned int block_index;
 
@@ -40,6 +41,7 @@ int d_cache_penalty;
 int main_memory_penalty;
 int mem_first_entry_filled;
 int mem_penalty_count;
+
 
 unsigned int memory[MEMORY_SIZE];
 
@@ -58,6 +60,6 @@ void Initialize_Simulation_Memory();
 void init_reg();
 int icache_access(unsigned int address, unsigned int *data);
 int dcache_access(int read, unsigned int address, unsigned int *data);
-int memory_access(int read, unsigned int address, unsigned int *data, int block_size);
+int memory_access(int read, unsigned int address, unsigned int *data, int block_size, int i_cache_Request);
 
 #endif // CACHE_H_INCLUDED
