@@ -5,10 +5,13 @@
 #include "pipe_reg.h"
 #include <math.h>
 
-#define ICACHE_SIZE 64              // bytes
-#define DCACHE_SIZE 128             // bytes
-#define ICACHE_BLOCK_SIZE 1         // words
-#define DCACHE_BLOCK_SIZE 1         // words
+#define ICACHE_ON 1                 // 0 = false, 1 = true
+#define ICACHE_SIZE 64             // bytes
+#define ICACHE_BLOCK_SIZE 1        // words
+
+#define DCACHE_ON 1                 // 0 = false, 1 = true
+#define DCACHE_SIZE 1024             // bytes
+#define DCACHE_BLOCK_SIZE 1        // words
 
 #define NUM_REGISTERS 32
 #define MEMORY_SIZE 3000            // words
@@ -34,10 +37,17 @@ struct D_Cache
 //unsigned int icache_tag_mask;
 unsigned int icache_entries;
 unsigned int dcache_entries;
-unsigned int block_offset_bits;
-unsigned int block_index;
 
-unsigned int block_offset;
+unsigned int i_block_offset_bits;
+unsigned int d_block_offset_bits;
+
+unsigned int i_block_index;
+unsigned int d_block_index;
+
+
+unsigned int i_block_offset;
+unsigned int d_block_offset;
+
 unsigned int mem_base_addr;
 
 int filling_i_cache;
@@ -49,6 +59,8 @@ int d_cache_penalty;
 int main_memory_penalty;
 int mem_first_entry_filled;
 int mem_penalty_count;
+int mem_handling_icache_req;
+int mem_handling_dcache_req;
 
 
 unsigned int memory[MEMORY_SIZE];

@@ -44,24 +44,21 @@ int main()
 // clock cycle == 1772 finished copy_array
 // clock cycle ==  1810 start bubble sort
 // clock cycle == 554622
-/*		if(clock_cycle >= 6756)
-        {
-            //break;
-            printf("stop!!!");
-        }
-*/
+//		if(clock_cycle >= 466)
+//        { printf("stop!!!"); }
+
 	}
 	// for Program 1, prints in decimal
-	/*printf("memory[6] = %d\n", memory[6]);
+	printf("memory[6] = %d\n", memory[6]);
 	printf("memory[7] = %d\n", memory[7]);
 	printf("memory[8] = %d\n", memory[8]);
-	printf("memory[9] = %d\n", memory[9]);*/
+	printf("memory[9] = %d\n", memory[9]);
 
     // for Program 2, prints 7, 8, & 9 in hex
-	printf("memory[6] = %d\n", memory[6]);
+	/*printf("memory[6] = %d\n", memory[6]);
 	printf("memory[7] = %#010x\n", memory[7]);
 	printf("memory[8] = %#010x\n", memory[8]);
-	printf("memory[9] = %#010x\n", memory[9]);
+	printf("memory[9] = %#010x\n", memory[9]);*/
 
 
 }
@@ -79,20 +76,26 @@ void IF()
 		PC.pc = IDEX.branch_target;
 	}
     printf("PC.pc = %d\n", PC.pc);
-    if (PC.pc == 140)
+    if (PC.pc >= 127)
     { printf("target pc reached\n"); }
 
-    if (clock_cycle >= 3290)
+    if (clock_cycle >= 39)
     { printf("target clock cycle reached\n"); }
 
     if (d_cache.valid[0] > 1)
     { printf("d_cache.valid[0] is out of range\n"); }
 
-
-    data_valid = icache_access(PC.pc, &instr);
-	if(!data_valid)
+    if (ICACHE_ON)
     {
-       stall_pipe = 1;
+        data_valid = icache_access(PC.pc, &instr);
+        if(!data_valid)
+        {
+            stall_pipe = 1;
+        }
+    }
+    else
+    {
+        instr = memory[PC.pc];
     }
 	//instr = memory[PC.pc];
 
@@ -950,10 +953,19 @@ int MEM()
     // Read from mem
 	if(EXMEM.Mem_Read == 1)
 	{
-		data_valid = dcache_access(1, EXMEM.ALU_result, &word);
+        if (DCACHE_ON)
+        {
+            data_valid = dcache_access(1, EXMEM.ALU_result, &word);
+        }
+        else
+        {
+            data_valid = 1;
+            word = memory[EXMEM.ALU_result];
+        }
+
         if(!data_valid)
         {
-            stall_pipe = 1;
+                stall_pipe = 1;
         }
         else
         {
@@ -1044,6 +1056,15 @@ void WB()
 
 void Update()
 {
+    if (mem_handling_dcache_req && mem_penalty_count == main_memory_penalty)
+    {
+        main_memory_penalty = 0;
+        mem_penalty_count = 0;
+        filling_d_cache = 0;
+        d_cache.valid[d_block_index] = 1;
+        mem_handling_dcache_req = 0;
+    }
+
 	if(stall_pipe)
     {
         IFID = IFID;
