@@ -74,6 +74,7 @@ void init_d_cache()
     filling_d_cache = 0;
     d_cache_hit = 0;
     mem_handling_dcache_req =0;
+    mem_handling_write_req = 0;
 
     // calculate
     dcache_entries = (DCACHE_SIZE / 4);
@@ -192,31 +193,27 @@ int icache_access(unsigned int address, unsigned int *data)
 
 int dcache_access(int read, unsigned int address, unsigned int *data)
 {
+    int data_valid = 0;
+    unsigned int cache_data = 0;
+    unsigned int dcache_tag = 0;
+    unsigned int dcache_remainder = 0;
+    unsigned int cache_addr = 0;
+
+    // calculate
+    dcache_tag = address / dcache_entries;
+    dcache_remainder = address % dcache_entries;
+    d_block_index = dcache_remainder / DCACHE_BLOCK_SIZE;
+    d_block_offset = dcache_remainder % DCACHE_BLOCK_SIZE;
+    cache_addr = (d_block_index << d_block_offset_bits) + d_block_offset;
+
+    printf("\nIn dcache_access()\n");
+    printf("Adddress = %u\n", address);
+
     // if request is a load (read)
     if(read)
     {
-        int data_valid = 0;
-        unsigned int cache_data = 0;
-        unsigned int dcache_tag = 0;
-        unsigned int dcache_remainder = 0;
-        unsigned int cache_addr = 0;
-
-        // calculate
-        dcache_tag = address / dcache_entries;
-        dcache_remainder = address % dcache_entries;
-        d_block_index = dcache_remainder / DCACHE_BLOCK_SIZE;
-        d_block_offset = dcache_remainder % DCACHE_BLOCK_SIZE;
-        cache_addr = (d_block_index << d_block_offset_bits) + d_block_offset;
-
-
-        printf("\nIn dcache_access()\n");
-        //printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
-        //unsigned int request_index = (address & icache_index_mask);
-        //unsigned int request_tag = (address & icache_tag_mask) >> 4;
-        printf("Adddress = %u\n", address);
-        //printf("Request index = %u, Request tag = %u\n", request_index, request_tag);
-
         // Cache Hit
+        printf("Reading from d_cache\n");
         if( !(filling_d_cache)
             && ((d_cache.tag[d_block_index] == dcache_tag) && (d_cache.valid[d_block_index])) )
         {
@@ -239,15 +236,12 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 d_cache.valid[d_block_index] = 1;
                 mem_handling_dcache_req = 0;
             }
-
         }
-
         // cache miss
         else
         {
             printf("D cache miss!\n");
             data_valid = memory_access(1, address, &cache_data, DCACHE_BLOCK_SIZE, 0);
-
             // main memory returned valid data
             if(data_valid)
             {
@@ -270,14 +264,29 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
     // write
     else
     {
+        printf("Writing to d_cache\n");
+        d_cache.tag[d_block_index] = dcache_tag;
+        d_cache.valid[d_block_index] = 1;
+        d_cache.dirty[d_block_index] = 1;
+        d_cache.data[cache_addr] = *data;
+
+        // Write Through
+        if(!WRITE_BACK)
+        {
+            data_valid = memory_access(0, address, data, DCACHE_BLOCK_SIZE, 0);
+
+        }
+        // data valid will be 1 if the write was successful and 0 if mem was busy with something else
+        return data_valid;
 
     }
 }
 
 int memory_access(int read, unsigned int address, unsigned int *data, int block_size, int i_cache_Request)
 {
-    if (i_cache_Request && mem_handling_dcache_req) { return 0; }
-    if (!i_cache_Request && mem_handling_icache_req) { return 0; }
+    if (i_cache_Request && (mem_handling_dcache_req || mem_handling_write_req)) { return 0; }
+    if (!i_cache_Request && (mem_handling_icache_req || mem_handling_write_req)) { return 0; }
+    if (!read && (main_memory_penalty > 0)) { return 0; }
 
     // todo add a first block filled boolean. So that 2nd block isn't filled first
     printf("\nIn memory_access()\n");
@@ -413,6 +422,22 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
     else
     {
         printf("Request to main memory is a Write!\n");
+        // calculate new penalty
+        mem_penalty_count = 0;
+        reset_mem_penalty_count = 1;
+        main_memory_penalty = 6;
+        if(block_size > 1)
+        {
+            for(int i = 0; i < block_size - 1; i++)
+            {
+                main_memory_penalty += 2;
+            }
+        }
+        memory[address] = *data;
+        mem_handling_write_req = 1;
+        // write request has been started
+        data_valid = 1;
+
     }
     printf("Main Memory data valid = %d\n\n", data_valid);
     return data_valid;
@@ -921,6 +946,7 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x0f0f0000,
 0x0000e000,
 };
+
 
 
 /*

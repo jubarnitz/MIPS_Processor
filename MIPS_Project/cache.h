@@ -5,12 +5,14 @@
 #include "pipe_reg.h"
 #include <math.h>
 
-#define ICACHE_ON 1                 // 0 = false, 1 = true
-#define ICACHE_SIZE 64             // bytes
+#define WRITE_BACK 0
+
+#define ICACHE_ON 0                 // 0 = false, 1 = true
+#define ICACHE_SIZE 128             // bytes
 #define ICACHE_BLOCK_SIZE 1        // words
 
 #define DCACHE_ON 1                 // 0 = false, 1 = true
-#define DCACHE_SIZE 1024             // bytes
+#define DCACHE_SIZE 128             // bytes
 #define DCACHE_BLOCK_SIZE 1        // words
 
 #define NUM_REGISTERS 32
@@ -61,6 +63,8 @@ int mem_first_entry_filled;
 int mem_penalty_count;
 int mem_handling_icache_req;
 int mem_handling_dcache_req;
+int mem_handling_write_req;
+int reset_mem_penalty_count;
 
 
 unsigned int memory[MEMORY_SIZE];
