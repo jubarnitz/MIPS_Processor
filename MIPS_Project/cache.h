@@ -8,11 +8,11 @@
 #define WRITE_BACK 0
 
 #define ICACHE_ON 0                 // 0 = false, 1 = true
-#define ICACHE_SIZE 128             // bytes
+#define ICACHE_SIZE 64             // bytes
 #define ICACHE_BLOCK_SIZE 1        // words
 
-#define DCACHE_ON 1                 // 0 = false, 1 = true
-#define DCACHE_SIZE 128             // bytes
+#define DCACHE_ON 0                 // 0 = false, 1 = true
+#define DCACHE_SIZE 32             // bytes
 #define DCACHE_BLOCK_SIZE 1        // words
 
 #define NUM_REGISTERS 32
@@ -34,7 +34,8 @@ struct D_Cache
     unsigned int dirty[(DCACHE_SIZE / 4) / DCACHE_BLOCK_SIZE];
 };
 
-
+unsigned int write_buffer[DCACHE_BLOCK_SIZE];
+unsigned int data_block[DCACHE_BLOCK_SIZE];
 //unsigned int icache_index_mask;
 //unsigned int icache_tag_mask;
 unsigned int icache_entries;
@@ -42,6 +43,7 @@ unsigned int dcache_entries;
 
 unsigned int i_block_offset_bits;
 unsigned int d_block_offset_bits;
+unsigned int d_cache_tag_bits;
 
 unsigned int i_block_index;
 unsigned int d_block_index;
@@ -51,6 +53,7 @@ unsigned int i_block_offset;
 unsigned int d_block_offset;
 
 unsigned int mem_base_addr;
+unsigned int write_addr;
 
 int filling_i_cache;
 int filling_d_cache;
@@ -65,6 +68,7 @@ int mem_handling_icache_req;
 int mem_handling_dcache_req;
 int mem_handling_write_req;
 int reset_mem_penalty_count;
+int write_back_to_occur;
 
 
 unsigned int memory[MEMORY_SIZE];

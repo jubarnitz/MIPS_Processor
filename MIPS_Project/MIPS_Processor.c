@@ -1106,8 +1106,30 @@ void Update()
         mem_penalty_count = 0;
         filling_d_cache = 0;
         d_cache.valid[d_block_index] = 1;
+        d_cache.dirty[d_block_index] = 0;
         mem_handling_dcache_req = 0;
         reset_mem_penalty_count = 1;
+        // Add in write back penalty
+        if( (WRITE_BACK) && (write_back_to_occur) )
+        {
+            printf("\n Write Back occurring\n");
+            write_back_to_occur = 0;
+            // at write penalty
+            main_memory_penalty += 6;
+            if(DCACHE_BLOCK_SIZE > 1)
+            {
+                for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
+                {
+                    main_memory_penalty += 2;
+                }
+            }
+            //write data to memory
+            for(int i = 0; i < DCACHE_BLOCK_SIZE -1; i++)
+            {
+                memory[write_addr + i] = d_cache.data[write_addr + i];
+            }
+            mem_handling_dcache_req = 1;
+        }
     }
 
     if(mem_handling_write_req && (mem_penalty_count == main_memory_penalty))

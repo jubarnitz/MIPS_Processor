@@ -71,14 +71,22 @@ void init_d_cache()
         d_cache.data[i] = 0;
     }
 
+    for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
+    {
+        write_buffer[i] = 0;
+    }
+
     filling_d_cache = 0;
     d_cache_hit = 0;
     mem_handling_dcache_req =0;
     mem_handling_write_req = 0;
+    write_back_to_occur = 0;
+    write_addr = 0;
 
     // calculate
     dcache_entries = (DCACHE_SIZE / 4);
     d_block_offset_bits = log(DCACHE_BLOCK_SIZE)/log(2);
+    d_cache_tag_bits = log(dcache_entries)/log(2);
 }
 
 /*
@@ -235,12 +243,48 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 filling_d_cache = 0;
                 d_cache.valid[d_block_index] = 1;
                 mem_handling_dcache_req = 0;
+                // Add in write back penalty
+                if( (WRITE_BACK) && (write_back_to_occur) )
+                {
+                    printf("\n Write Back occurring\n");
+                    write_back_to_occur = 0;
+                    // at write penalty
+                    main_memory_penalty += 6;
+                    if(DCACHE_BLOCK_SIZE > 1)
+                    {
+                        for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
+                        {
+                            main_memory_penalty += 2;
+                        }
+                    }
+                    //write data to memory
+                    for(int i = 0; i < DCACHE_BLOCK_SIZE -1; i++)
+                    {
+                        memory[write_addr + i] = d_cache.data[write_addr + i];
+                    }
+                }
             }
+
         }
         // cache miss
         else
         {
             printf("D cache miss!\n");
+
+            // Write Back needs to occur cache is dirty
+            if( (WRITE_BACK) && (d_cache.dirty[d_block_index] == 1) )
+            {
+                printf("\n setting Write Back\n");
+                write_back_to_occur = 1;
+                // save the address
+                write_addr = (d_cache.tag[d_block_index] << d_cache_tag_bits) | d_block_index;
+                // write the whole cache block to the write buffer
+                for(int i = 0; i < (DCACHE_BLOCK_SIZE - 1); i++)
+                {
+                    write_buffer[i] = d_cache.data[ (d_block_index << d_block_offset_bits) + i ];
+                }
+            }
+
             data_valid = memory_access(1, address, &cache_data, DCACHE_BLOCK_SIZE, 0);
             // main memory returned valid data
             if(data_valid)
@@ -265,16 +309,63 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
     else
     {
         printf("Writing to d_cache\n");
-        d_cache.tag[d_block_index] = dcache_tag;
-        d_cache.valid[d_block_index] = 1;
-        d_cache.dirty[d_block_index] = 1;
-        d_cache.data[cache_addr] = *data;
+
+        if(d_cache.tag[d_block_index] == dcache_tag)
+        {
+            //cache hit
+            d_cache.data[address] = *data;
+            d_cache.dirty[d_block_index] = 1;
+
+        }
+        else
+        {
+            //cache miss
+            if( WRITE_BACK && d_cache.dirty[d_block_index] == 1 )
+            {
+                //put data in write buffer
+                printf("\n setting Write Back\n");
+                write_back_to_occur = 1;
+                // save the address
+                write_addr = (d_cache.tag[d_block_index] << d_cache_tag_bits) | d_block_index;
+                // write the whole cache block to the write buffer
+                for(int i = 0; i < (DCACHE_BLOCK_SIZE - 1); i++)
+                {
+                    write_buffer[i] = d_cache.data[ (d_block_index << d_block_offset_bits) + i ];
+                }
+            }
+            else
+            {
+                //put data into cache from memory
+
+                for(int i = 0; i < DCACHE_BLOCK_SIZE; i++)
+                {
+                     printf("Cache miss on write, bring data from memory[%d]\n", ((((address>>d_block_offset_bits)<<d_block_offset_bits) + i) ) );
+                    d_cache.data[((address>>d_block_offset_bits)<<d_block_offset_bits) + i] = memory[(((address>>d_block_offset_bits)<<d_block_offset_bits) + i)];
+                }
+            }
+            //put data into cache
+            d_cache.tag[d_block_index] = dcache_tag;
+            d_cache.valid[d_block_index] = 1;
+            d_cache.dirty[d_block_index] = 1;
+            d_cache.data[cache_addr] = *data;
+
+
+        }
+
+        //d_cache.tag[d_block_index] = dcache_tag;
+        //d_cache.valid[d_block_index] = 1;
+        //d_cache.dirty[d_block_index] = 1;
+        //d_cache.data[cache_addr] = *data;
 
         // Write Through
         if(!WRITE_BACK)
         {
             data_valid = memory_access(0, address, data, DCACHE_BLOCK_SIZE, 0);
 
+        }
+        else
+        {
+            data_valid = 1;
         }
         // data valid will be 1 if the write was successful and 0 if mem was busy with something else
         return data_valid;
@@ -337,7 +428,29 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
                 {
                     filling_d_cache = 0;
                     d_cache.valid[d_block_index] = 1;
+                    d_cache.dirty[d_block_index] = 0;
                     mem_handling_dcache_req = 0;
+                    // Add in write back penalty
+                    if( (WRITE_BACK) && (write_back_to_occur) )
+                    {
+                        printf("\n Write Back occurring\n");
+                        write_back_to_occur = 0;
+                        // at write penalty
+                        main_memory_penalty += 6;
+                        if(DCACHE_BLOCK_SIZE > 1)
+                        {
+                            for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
+                            {
+                                main_memory_penalty += 2;
+                            }
+                        }
+                        //write data to memory
+                        for(int i = 0; i < DCACHE_BLOCK_SIZE -1; i++)
+                        {
+                            memory[write_addr + i] = d_cache.data[write_addr + i];
+                        }
+                        mem_handling_dcache_req = 1;
+                    }
                 }
 
             }
@@ -377,7 +490,29 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
                 {
                     filling_d_cache = 0;
                     d_cache.valid[d_block_index] = 1;
+                    d_cache.dirty[d_block_index] = 0;
                     mem_handling_dcache_req = 0;
+                    // Add in write back penalty
+                    if( (WRITE_BACK) && (write_back_to_occur) )
+                    {
+                        printf("\n Write Back occurring\n");
+                        write_back_to_occur = 0;
+                        // at write penalty
+                        main_memory_penalty = 6;
+                        if(DCACHE_BLOCK_SIZE > 1)
+                        {
+                            for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
+                            {
+                                main_memory_penalty += 2;
+                            }
+                        }
+                        //write data to memory
+                        for(int i = 0; i < DCACHE_BLOCK_SIZE -1; i++)
+                        {
+                            memory[write_addr + i] = d_cache.data[write_addr + i];
+                        }
+                        mem_handling_dcache_req = 1;
+                    }
                 }
             }
        }
@@ -391,7 +526,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
         else
         {
             mem_first_entry_filled = 0;
-            mem_penalty_count = 0;
+            mem_penalty_count = 1;
             main_memory_penalty = 8;
 
             if (i_cache_Request)
@@ -424,7 +559,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
         printf("Request to main memory is a Write!\n");
         // calculate new penalty
         mem_penalty_count = 0;
-        reset_mem_penalty_count = 1;
+        //reset_mem_penalty_count = 1;
         main_memory_penalty = 6;
         if(block_size > 1)
         {
