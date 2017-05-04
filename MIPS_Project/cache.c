@@ -21,7 +21,7 @@ unsigned int init_i_cache()
 {
 	int tmp = 1;
 	// number of indexes
-	int size = (ICACHE_SIZE / 4) / ICACHE_BLOCK_SIZE;
+	int size = (ICACHE_SIZE / 4) / BLOCK_SIZE;
 	int data_size = (ICACHE_SIZE / 4);
 	printf("The number of indexes in i cache = %d\n", size);
 
@@ -37,8 +37,8 @@ unsigned int init_i_cache()
         i_cache.data[i] = 0;
     }
 
-    filling_i_cache = 0;
-    i_cache_hit = 0;
+    filling_icache = 0;
+    icache_hit = 0;
     mem_handling_icache_req = 0;
 
     // only good for size 64 and block size 1
@@ -46,7 +46,20 @@ unsigned int init_i_cache()
     //icache_tag_mask = 0xFFFFFFF0;
     // calculate
     icache_entries = (ICACHE_SIZE / 4);
-    i_block_offset_bits = log(ICACHE_BLOCK_SIZE)/log(2);
+    i_block_offset_bits = log(BLOCK_SIZE)/log(2);
+
+    // current icache request vars
+    icache_req_addr = 0;
+    icache_req_tag = 0;
+    icache_req_index = 0;
+    icache_req_blkoffset = 0;
+    icache_req_cache_addr = 0;
+
+    icache_checked = 0;
+    filling_icache = 0;
+
+    mem_data_valid = 0;
+    icache_blocks_filled = 0;
 
 
     //printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
@@ -56,7 +69,7 @@ unsigned int init_i_cache()
 void init_d_cache()
 {
 	// number of indexes
-	int size = (DCACHE_SIZE / 4) / DCACHE_BLOCK_SIZE;
+	int size = (DCACHE_SIZE / 4) / BLOCK_SIZE;
 	int data_size = (DCACHE_SIZE / 4);
 	printf("The number of indexes in d cache = %d\n", size);
 
@@ -71,13 +84,13 @@ void init_d_cache()
         d_cache.data[i] = 0;
     }
 
-    for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
+    for(int i = 0; i < BLOCK_SIZE - 1; i++)
     {
         write_buffer[i] = 0;
     }
 
     filling_d_cache = 0;
-    d_cache_hit = 0;
+    dcache_hit = 0;
     mem_handling_dcache_req =0;
     mem_handling_write_req = 0;
     write_back_to_occur = 0;
@@ -85,7 +98,7 @@ void init_d_cache()
 
     // calculate
     dcache_entries = (DCACHE_SIZE / 4);
-    d_block_offset_bits = log(DCACHE_BLOCK_SIZE)/log(2);
+    d_block_offset_bits = log(BLOCK_SIZE)/log(2);
     d_cache_tag_bits = log(dcache_entries)/log(2);
 }
 
@@ -125,7 +138,8 @@ void Initialize_Simulation_Memory(void){
 
 int icache_access(unsigned int address, unsigned int *data)
 {
-    int data_valid = 0;
+    int icache_data_valid = 0;
+    unsigned int mem_data = 0;
     unsigned int cache_data = 0;
     unsigned int icache_tag = 0;
     unsigned int icache_remainder = 0;
@@ -133,19 +147,55 @@ int icache_access(unsigned int address, unsigned int *data)
 
     // calculate
     icache_tag = address / icache_entries;
-    //icache_tag = address / (icache_entries/ICACHE_BLOCK_SIZE);
     icache_remainder = address % icache_entries;
-    i_block_index = icache_remainder / ICACHE_BLOCK_SIZE;
-    i_block_offset = icache_remainder % ICACHE_BLOCK_SIZE;
+    i_block_index = icache_remainder / BLOCK_SIZE;
+    i_block_offset = icache_remainder % BLOCK_SIZE;
     cache_addr = (i_block_index << i_block_offset_bits) + i_block_offset;
 
     printf("\nIn icache_access()\n");
-    //printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
-    //unsigned int request_index = (address & icache_index_mask);
-    //unsigned int request_tag = (address & icache_tag_mask) >> 4;
     printf("Adddress = %u\n", address);
-    //printf("Request index = %u, Request tag = %u\n", request_index, request_tag);
 
+    // Cache Hit
+    if( (icache_tag == i_cache.tag[i_block_index]) && (i_cache.valid[i_block_index] == 1) )
+    {
+        printf("i_cache hit occurred!\n");
+        icache_hit++;
+        *data = i_cache.data[cache_addr];
+        icache_data_valid = 1;
+    }
+    // Cache Miss -> Make a new request to memory
+    else if (!filling_icache)
+    {
+        printf("i_cache miss occurred. Creating new request\n");
+        filling_icache = 1;
+        // Keep track of the new request address
+        icache_req_addr = address;
+        // set the address to the first of the block
+        icache_req_addr_beginning = (icache_req_addr >> i_block_offset_bits) << i_block_offset_bits;
+        icache_req_tag = icache_tag;
+        icache_req_index = i_block_index;
+        icache_req_blkoffset = i_block_offset;
+        icache_req_cache_addr = cache_addr - i_block_offset;
+        // pass to memory access the address of the start of the block
+        mem_data_valid = memory_access(1, icache_req_addr_beginning, &mem_data, 1);
+        i_cache.tag[icache_req_index] = icache_req_tag;
+        i_cache.valid[icache_req_index] = 0;
+        icache_blocks_filled = 0;
+        icache_data_valid = 0;
+
+    }
+    // Check early start
+    else
+    {
+        // early start
+        if( (i_block_offset < icache_blocks_filled) &&  (icache_tag == icache_req_tag) && (i_block_index == icache_req_index))
+        {
+            *data = i_cache.data[cache_addr];
+            icache_data_valid = 1;
+        }
+    }
+    return icache_data_valid;
+    /*
     // Cache Hit
     if( !(filling_i_cache)
        && ((i_cache.tag[i_block_index] == icache_tag) && (i_cache.valid[i_block_index])) )
@@ -196,12 +246,14 @@ int icache_access(unsigned int address, unsigned int *data)
     }
 
     return data_valid;
+    */
 
 }
 
 int dcache_access(int read, unsigned int address, unsigned int *data)
 {
-    int data_valid = 0;
+    int dcache_data_valid = 0;
+    unsigned int mem_data = 0;
     unsigned int cache_data = 0;
     unsigned int dcache_tag = 0;
     unsigned int dcache_remainder = 0;
@@ -210,13 +262,101 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
     // calculate
     dcache_tag = address / dcache_entries;
     dcache_remainder = address % dcache_entries;
-    d_block_index = dcache_remainder / DCACHE_BLOCK_SIZE;
-    d_block_offset = dcache_remainder % DCACHE_BLOCK_SIZE;
+    d_block_index = dcache_remainder / BLOCK_SIZE;
+    d_block_offset = dcache_remainder % BLOCK_SIZE;
     cache_addr = (d_block_index << d_block_offset_bits) + d_block_offset;
 
     printf("\nIn dcache_access()\n");
     printf("Adddress = %u\n", address);
 
+    if(read)
+    {
+        // Cache hit
+        if( (dcache_tag == d_cache.tag[d_block_index]) && (d_cache.valid[d_block_index] == 1) )
+        {
+            printf("d_cache hit occurred!\n");
+            dcache_hit++;
+            *data = d_cache.data[cache_addr];
+            dcache_data_valid = 1;
+        }
+        // create new request to memory
+        else if(!filling_dcache)
+        {
+            printf("d_cache miss occurred on read. Creating new request\n");
+            filling_dcache = 1;
+            // Keep track of the new request address
+            dcache_req_addr = address;
+            // set the address to the first of the block
+            dcache_req_addr_beginning = (dcache_req_addr >> d_block_offset_bits) << d_block_offset_bits;
+            dcache_req_tag = dcache_tag;
+            dcache_req_index = d_block_index;
+            dcache_req_blkoffset = d_block_offset;
+            dcache_req_cache_addr = cache_addr - d_block_offset;
+            // pass to memory access the address of the start of the block
+            mem_data_valid = memory_access(1, dcache_req_addr_beginning, &mem_data, 0);
+            dcache_read_req = 1;
+            d_cache.tag[dcache_req_index] = dcache_req_tag;
+            d_cache.valid[dcache_req_index] = 0;
+            dcache_blocks_filled = 0;
+            dcache_data_valid = 0;
+        }
+    }
+    //Write
+    else
+    {
+        // if memory is currently busy, cannot execute write through and have to stall
+        if( (!WRITE_BACK) && (filling_dcache || filling_icache) )
+        {
+            return 0;
+        }
+
+        // Cache hit
+        if( (dcache_tag == d_cache.tag[d_block_index]) && (d_cache.valid[d_block_index] == 1) )
+        {
+            dcache_hit++;
+            dcache_req_addr = cache_addr;
+            d_cache.data[cache_addr] = *data;
+            d_cache.dirty[d_block_index] = 1;
+            if(!WRITE_BACK)
+            {
+                // write through
+                mem_data_valid = memory_access(0, address, data, 0);
+                dcache_read_req = 0;
+                filling_dcache = 1;
+                dcache_blocks_filled = 0;
+            }
+            else // save to write buffer
+            {
+
+            }
+            dcache_data_valid = 1;
+        }
+        // data is not in cache have to create a read request from main memory
+        else if(!filling_dcache)
+        {
+            printf("d_cache miss occurred on write. Creating new request\n");
+            filling_dcache = 1;
+            // Keep track of the new request address
+            dcache_req_addr = address;
+            // set the address to the first of the block
+            dcache_req_addr_beginning = (dcache_req_addr >> d_block_offset_bits) << d_block_offset_bits;
+            dcache_req_tag = dcache_tag;
+            dcache_req_index = d_block_index;
+            dcache_req_blkoffset = d_block_offset;
+            dcache_req_cache_addr = cache_addr - d_block_offset;
+            // pass to memory access the address of the start of the block
+            mem_data_valid = memory_access(1, dcache_req_addr_beginning, &mem_data, 0);
+            dcache_read_req = 1;
+            d_cache.tag[dcache_req_index] = dcache_req_tag;
+            d_cache.valid[dcache_req_index] = 0;
+            dcache_blocks_filled = 0;
+            dcache_data_valid = 0;
+        }
+
+    }
+    return dcache_data_valid;
+
+    /*
     // if request is a load (read)
     if(read)
     {
@@ -250,15 +390,15 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                     write_back_to_occur = 0;
                     // at write penalty
                     main_memory_penalty += 6;
-                    if(DCACHE_BLOCK_SIZE > 1)
+                    if(BLOCK_SIZE > 1)
                     {
-                        for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
+                        for(int i = 0; i < BLOCK_SIZE - 1; i++)
                         {
                             main_memory_penalty += 2;
                         }
                     }
                     //write data to memory
-                    for(int i = 0; i < DCACHE_BLOCK_SIZE -1; i++)
+                    for(int i = 0; i < BLOCK_SIZE -1; i++)
                     {
                         memory[write_addr + i] = d_cache.data[write_addr + i];
                     }
@@ -279,13 +419,13 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 // save the address
                 write_addr = (d_cache.tag[d_block_index] << d_cache_tag_bits) | d_block_index;
                 // write the whole cache block to the write buffer
-                for(int i = 0; i < (DCACHE_BLOCK_SIZE - 1); i++)
+                for(int i = 0; i < (BLOCK_SIZE - 1); i++)
                 {
                     write_buffer[i] = d_cache.data[ (d_block_index << d_block_offset_bits) + i ];
                 }
             }
 
-            data_valid = memory_access(1, address, &cache_data, DCACHE_BLOCK_SIZE, 0);
+            data_valid = memory_access(1, address, &cache_data,  0);
             // main memory returned valid data
             if(data_valid)
             {
@@ -328,7 +468,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 // save the address
                 write_addr = (d_cache.tag[d_block_index] << d_cache_tag_bits) | d_block_index;
                 // write the whole cache block to the write buffer
-                for(int i = 0; i < (DCACHE_BLOCK_SIZE - 1); i++)
+                for(int i = 0; i < (BLOCK_SIZE - 1); i++)
                 {
                     write_buffer[i] = d_cache.data[ (d_block_index << d_block_offset_bits) + i ];
                 }
@@ -337,7 +477,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             {
                 //put data into cache from memory
 
-                for(int i = 0; i < DCACHE_BLOCK_SIZE; i++)
+                for(int i = 0; i < BLOCK_SIZE; i++)
                 {
                      printf("Cache miss on write, bring data from memory[%d]\n", ((((address>>d_block_offset_bits)<<d_block_offset_bits) + i) ) );
                     d_cache.data[((address>>d_block_offset_bits)<<d_block_offset_bits) + i] = memory[(((address>>d_block_offset_bits)<<d_block_offset_bits) + i)];
@@ -360,7 +500,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
         // Write Through
         if(!WRITE_BACK)
         {
-            data_valid = memory_access(0, address, data, DCACHE_BLOCK_SIZE, 0);
+            data_valid = memory_access(0, address, data, 0);
 
         }
         else
@@ -371,10 +511,108 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
         return data_valid;
 
     }
+    */
 }
 
-int memory_access(int read, unsigned int address, unsigned int *data, int block_size, int i_cache_Request)
+int memory_access(int read, unsigned int address, unsigned int *data, int i_cache_Request)
 {
+    int data_valid = 0;
+    if( i_cache_Request && mem_handling_dcache_req ) { return 0; }
+    if( !i_cache_Request && mem_handling_icache_req ) { return 0; }
+
+    // If memory is idle
+    if( !mem_handling_icache_req && !mem_handling_dcache_req )
+    {
+        // Create a new i cache request
+        if( i_cache_Request )
+        {
+            printf(" In Memory: Creating new Icache request\n");
+            mem_counter = 7;
+            mem_handling_icache_req = 1;
+        }
+        // Create a new dcache request
+        else
+        {
+            printf(" In Memory: Creating new Dcache request\n");
+            mem_counter = 6;
+            mem_handling_dcache_req = 1;
+        }
+        mem_blksize = BLOCK_SIZE;
+        data_valid = 0;
+    }
+    // Memory is working on Icache
+    else if( mem_handling_icache_req )
+    {
+        if( read )
+        {
+            // Penalty has expired. Deliver data
+            if( mem_counter == 0)
+            {
+                printf("Memory Penalty has expired. Delivering Data to Icache\n");
+                mem_blksize--;
+                *data = memory[address];
+                data_valid = 1;
+                // Check if all blocks have been filled
+                if( mem_blksize == 0 )
+                {
+                    printf("Memory has filled all blocks of the request\n");
+                    mem_handling_icache_req = 0;
+                }
+                // If more blocks to be filled, add penalty of 2
+                else
+                {
+                    printf("Memory adding next block penalty\n");
+                    mem_counter = 2;
+                }
+            }
+        }
+    }
+    else if( mem_handling_dcache_req )
+    {
+        if( mem_counter == 0)
+        {
+            if(read)
+            {
+                printf("Memory Penalty has expired. Delivering Data to Icache\n");
+                mem_blksize--;
+                *data = memory[address];
+                data_valid = 1;
+                // Check if all blocks have been filled
+                if( mem_blksize == 0 )
+                {
+                    printf("Memory has filled all blocks of the request\n");
+                    mem_handling_dcache_req = 0;
+                }
+                // If more blocks to be filled, add penalty of 2
+                else
+                {
+                    printf("Memory adding next block penalty\n");
+                    mem_counter = 2;
+                }
+            }
+            else
+            {
+                // If the req was write_back, it will write the whole block back
+                if(WRITE_BACK)
+                {
+
+                }
+                else
+                {
+                    // Write through is only 1 word
+                    memory[address] = *data;
+                    data_valid = 1;
+                    mem_handling_dcache_req = 0;
+                    printf("Write through is complete\n");
+                    mem_blksize = 0;
+
+                }
+            }
+        }
+    }
+    return data_valid;
+
+    /*
     if (i_cache_Request && (mem_handling_dcache_req || mem_handling_write_req)) { return 0; }
     if (!i_cache_Request && (mem_handling_icache_req || mem_handling_write_req)) { return 0; }
     if (!read && (main_memory_penalty > 0)) { return 0; }
@@ -420,7 +658,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
                 mem_penalty_count = 0;
                 if(i_cache_Request)
                 {
-                    filling_i_cache = 0;
+                    filling_icache = 0;
                     i_cache.valid[i_block_index] = 1;
                     mem_handling_icache_req = 0;
                 }
@@ -576,11 +814,95 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
     }
     printf("Main Memory data valid = %d\n\n", data_valid);
     return data_valid;
+    */
 }
 
+void mem_update()
+{
+    if( mem_counter > 0 )
+    {
+        mem_counter--;
+    }
+}
 
+void icache_update()
+{
+    int mem_data_valid = 0;
+    unsigned int mem_data;
+    unsigned int icache_next_req_addr;
+    // If icache has not been checked this cycle
+    if( filling_icache )
+    {
+        printf("In icache update\n");
+        icache_next_req_addr = icache_req_addr_beginning + icache_blocks_filled;
+        printf("Waiting on data for address: %d\n", icache_next_req_addr);
 
+        // pass to memory access the address of the waiting block offset
+        mem_data_valid = memory_access(1, icache_next_req_addr, &mem_data, 1);
+        // memory has data for i cache
+        if(mem_data_valid)
+        {
+            // fill the correct block
+            i_cache.data[icache_req_cache_addr + icache_blocks_filled] = mem_data;
+            icache_blocks_filled++;
 
+            // check if all blocks have been filled
+            if(icache_blocks_filled == BLOCK_SIZE)
+            {
+                filling_icache = 0;
+                i_cache.valid[icache_req_index] = 1;
+            }
+        }
+    }
+    icache_checked = 0;
+}
+
+void dcache_update()
+{
+    int mem_data_valid = 0;
+    unsigned int mem_data;
+    unsigned int dcache_next_req_addr;
+    // If icache has not been checked this cycle
+    if( filling_dcache )
+    {
+        printf("In dcache update\n");
+        dcache_next_req_addr = dcache_req_addr_beginning + dcache_blocks_filled;
+        printf("Waiting on data for address: %d\n", dcache_next_req_addr);
+
+        if(dcache_read_req)
+        {
+            // pass to memory access the address of the waiting block offset
+            mem_data_valid = memory_access(1, dcache_next_req_addr, &mem_data, 0);
+            // memory has data for d cache
+            if(mem_data_valid)
+            {
+                // fill the correct block
+                d_cache.data[dcache_req_cache_addr + dcache_blocks_filled] = mem_data;
+                dcache_blocks_filled++;
+
+                // check if all blocks have been filled
+                if(dcache_blocks_filled == BLOCK_SIZE)
+                {
+                    filling_dcache = 0;
+                    d_cache.valid[dcache_req_index] = 1;
+                }
+            }
+        }
+        else
+        {
+            mem_data = d_cache.data[dcache_req_addr];
+            // pass to memory access the address of the waiting block offset
+            mem_data_valid = memory_access(0, dcache_next_req_addr, &mem_data, 0);
+            // memory has data for i cache
+            if(mem_data_valid)
+            {
+                filling_dcache = 0;
+                d_cache.valid[dcache_req_index] = 1;
+            }
+        }
+    }
+    dcache_checked = 0;
+}
 
 
 

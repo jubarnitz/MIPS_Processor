@@ -78,14 +78,12 @@ void IF()
 	}
     printf("PC.pc = %d\n", PC.pc);
 
-    if (d_cache.valid[0] > 1)
-    { printf("d_cache.valid[0] is out of range\n"); return -1; }
-
     if (ICACHE_ON)
     {
         data_valid = icache_access(PC.pc, &instr);
         if(!data_valid)
         {
+            printf("\nStalll\n");
             stall_pipe = 1;
         }
     }
@@ -95,7 +93,7 @@ void IF()
     }
 	//instr = memory[PC.pc];
 
-	printf("instruction = 0x%08x\n", instr);
+	printf("\ninstruction = 0x%08x\n", instr);
 
 //	if (instr != 0)
 //	{ printf("new instruction\n"); }
@@ -107,8 +105,8 @@ void IF()
     if(instr == 0x80a70000)
     { printf("start function\n"); }
 
-    if(instr == 0x0003100b)
-    { printf("movn\n"); }
+    if(instr == 0x8c050008)
+    { printf("lw\n"); }
 
     if(instr == 65011720)
     { printf("jr instruction\n"); }
@@ -1100,6 +1098,7 @@ void WB()
 
 void Update()
 {
+    /*
     if (mem_handling_dcache_req && mem_penalty_count == main_memory_penalty)
     {
         main_memory_penalty = 0;
@@ -1141,6 +1140,10 @@ void Update()
         d_cache.dirty[d_block_index] = 0;
         reset_mem_penalty_count = 1;
     }
+*/
+    mem_update();
+    icache_update();
+    dcache_update();
 
 	if(stall_pipe)
     {
