@@ -313,17 +313,42 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
         // Cache hit
         if( (dcache_tag == d_cache.tag[d_block_index]) && (d_cache.valid[d_block_index] == 1) )
         {
+            printf("Dcache write hit\n");
             dcache_hit++;
-            dcache_req_addr = cache_addr;
+            dcache_req_addr = address; // this was cache_addr
             d_cache.data[cache_addr] = *data;
             d_cache.dirty[d_block_index] = 1;
             if(!WRITE_BACK)
             {
                 // write through
+                // need to fix a bug where after a dcache write hit, dcache_req_addr_beginning is still an old value
+
+                //mem_data_valid = memory_access(0, address, data, 0);
+                //dcache_read_req = 0;
+                //filling_dcache = 1;
+                //dcache_blocks_filled = 0;
+
+                // ...
+                printf("d_cache hit occurred on write-through. Creating new request\n");
+                filling_dcache = 1;
+                // Keep track of the new request address
+                //dcache_req_addr = address;
+                // on a write-through, don't set the address to the first of the block
+                dcache_req_addr_beginning = address;
+                //dcache_req_addr_beginning = (address >> d_block_offset_bits) << d_block_offset_bits;
+                dcache_req_tag = dcache_tag;
+                dcache_req_index = d_block_index;
+                dcache_req_blkoffset = d_block_offset;
+                dcache_req_cache_addr = cache_addr; // this was cache_addr - d_block_offset;
+                // pass to memory access the address of the start of the block
                 mem_data_valid = memory_access(0, address, data, 0);
                 dcache_read_req = 0;
-                filling_dcache = 1;
+                d_cache.tag[dcache_req_index] = dcache_req_tag;
+                d_cache.valid[dcache_req_index] = 0;
                 dcache_blocks_filled = 0;
+                //dcache_data_valid = 0;
+
+                // ...
             }
             else // save to write buffer
             {
@@ -573,7 +598,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
         {
             if(read)
             {
-                printf("Memory Penalty has expired. Delivering Data to Icache\n");
+                printf("Memory Penalty has expired. Delivering Data to Dcache\n");
                 mem_blksize--;
                 *data = memory[address];
                 data_valid = 1;
@@ -600,7 +625,8 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
                 else
                 {
                     // Write through is only 1 word
-                    memory[address] = *data;
+                    memory[address] = *data; // this was writing to memory[392] when it should've written to memory[395].
+                    // we were accidentally passing in the 'base' address of the block
                     data_valid = 1;
                     mem_handling_dcache_req = 0;
                     printf("Write through is complete\n");
@@ -890,9 +916,11 @@ void dcache_update()
         }
         else
         {
-            mem_data = d_cache.data[dcache_req_addr];
+            mem_data = d_cache.data[dcache_req_cache_addr];
             // pass to memory access the address of the waiting block offset
-            mem_data_valid = memory_access(0, dcache_next_req_addr, &mem_data, 0);
+            // this was passing in a base addr instead of the correct offset addr
+            //mem_data_valid = memory_access(0, dcache_next_req_addr, &mem_data, 0);
+            mem_data_valid = memory_access(0, dcache_req_addr_beginning + dcache_blocks_filled, &mem_data, 0); //dcache_req_blkoffset
             // memory has data for i cache
             if(mem_data_valid)
             {
@@ -1403,6 +1431,8 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x0f0f0000,
 0x0000e000,
 };
+
+
 
 
 

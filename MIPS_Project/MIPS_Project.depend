@@ -14,7 +14,7 @@
 
 1493087859 source:/home/user/MIPS_Processor/MIPS_Project/memory.c
 
-1493432639 source:/home/user/MIPS_Processor/MIPS_Project/MIPS_Processor.c
+1493935287 source:/home/user/MIPS_Processor/MIPS_Project/MIPS_Processor.c
 	"MIPS_Processor.h"
 
 1493588118 essor.h"
@@ -26,21 +26,24 @@
 	"cache.h"
 	"flush_reg.h"
 
-1493432988 /home/user/MIPS_Processor/MIPS_Project/cache.h
+1493936935 /home/user/MIPS_Processor/MIPS_Project/cache.h
 	<stdio.h>
 	"pipe_reg.h"
 	<math.h>
 
 1493580639 
 
-1493431647 source:/home/user/MIPS_Processor/MIPS_Project/cache.c
+1493935332 source:/home/user/MIPS_Processor/MIPS_Project/cache.c
 	"cache.h"
 
 1492575818 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/flush_reg.c
 	"flush_reg.h"
 	"flush_reg.h"
+	"flush_reg.h"
 
 1490831453 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/flush_reg.h
+	<stdio.h>
+	"pipe_reg.h"
 	<stdio.h>
 	"pipe_reg.h"
 	<stdio.h>
@@ -50,23 +53,33 @@
 
 1492888785 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/memory.c
 
-1493578475 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/cache.c
+1493876108 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/cache.c
+	"cache.h"
 	"cache.h"
 	"cache.h"
 
-1493577039 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/cache.h
+1493876356 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/cache.h
 	<stdio.h>
 	"pipe_reg.h"
 	<math.h>
 	<stdio.h>
 	"pipe_reg.h"
 	<math.h>
+	<stdio.h>
+	"pipe_reg.h"
+	<math.h>
 
-1493583471 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/MIPS_Processor.c
+1493869436 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/MIPS_Processor.c
+	"MIPS_Processor.h"
 	"MIPS_Processor.h"
 	"MIPS_Processor.h"
 
 1493216245 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/MIPS_Processor.h
+	<stdio.h>
+	<stdlib.h>
+	"pipe_reg.h"
+	"cache.h"
+	"flush_reg.h"
 	<stdio.h>
 	<stdlib.h>
 	"pipe_reg.h"
@@ -101,35 +114,6 @@
 	"MIPS_Processor.h"
 
 1493219845 c:\users\jubar\dropbox\ecen_4593\mips_processor\mips_project\mips_processor.h
-	<stdio.h>
-	<stdlib.h>
-	"pipe_reg.h"
-	"cache.h"
-	"flush_reg.h"
-
-1493876108 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/cache.c
-	"cache.h"
-
-1493876356 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/cache.h
-	<stdio.h>
-	"pipe_reg.h"
-	<math.h>
-
-1492480844 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/pipe_reg.h
-
-1492575818 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/flush_reg.c
-	"flush_reg.h"
-
-1490831453 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/flush_reg.h
-	<stdio.h>
-	"pipe_reg.h"
-
-1492888785 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/memory.c
-
-1493869436 source:/home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/MIPS_Processor.c
-	"MIPS_Processor.h"
-
-1493216245 /home/user/Dropbox/ECEN_4593/MIPS_Processor/MIPS_Project/MIPS_Processor.h
 	<stdio.h>
 	<stdlib.h>
 	"pipe_reg.h"
