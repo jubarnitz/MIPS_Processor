@@ -78,8 +78,6 @@ void IF()
 	}
     printf("PC.pc = %d\n", PC.pc);
 
-    if (d_cache.valid[0] > 1)
-    { printf("d_cache.valid[0] is out of range\n"); return -1; }
 
     if (ICACHE_ON)
     {
@@ -97,13 +95,12 @@ void IF()
 
 	printf("instruction = 0x%08x\n", instr);
 
-//	if (instr != 0)
-//	{ printf("new instruction\n"); }
+	if (PC.pc == 130)
+	{ printf("target instruction\n"); }
 
-    if(clock_cycle == 258)
-    {
-        printf("Hold up\n");
-    }
+    if(clock_cycle == 125)
+    { printf("Hold up\n"); }
+
     if(instr == 0x80a70000)
     { printf("start function\n"); }
 

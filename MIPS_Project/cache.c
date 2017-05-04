@@ -50,7 +50,7 @@ unsigned int init_i_cache()
 
 
     //printf("icache_index_mask = 0x%08x, icache_tag_mask = 0x%08x\n", icache_index_mask, icache_tag_mask);
-
+    return 0;
 }
 
 void init_d_cache()
@@ -230,7 +230,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             *data = d_cache.data[cache_addr];
             data_valid = 1;
         }
-        else if ( (filling_d_cache) && (mem_penalty_count >= 9) && ((int)d_block_offset <= (int)((mem_penalty_count - 9) / 2)) && ((address>>d_block_offset_bits)<<d_block_offset_bits == mem_base_addr) )
+        else if ( (filling_d_cache) && (d_cache.tag[d_block_index] == dcache_tag) && (mem_penalty_count >= 9) && ((int)d_block_offset <= (int)((mem_penalty_count - 9) / 2)) && ((address>>d_block_offset_bits)<<d_block_offset_bits == mem_base_addr) )
         {
             printf("D cache early start hit!\n");
             d_cache_hit = 1;
@@ -258,9 +258,9 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                         }
                     }
                     //write data to memory
-                    for(int i = 0; i < DCACHE_BLOCK_SIZE -1; i++)
+                    for(int i = 0; i < DCACHE_BLOCK_SIZE; i++)
                     {
-                        memory[write_addr + i] = d_cache.data[write_addr + i];
+                        memory[write_addr + i] = d_cache.data[((cache_addr>>d_block_offset_bits)<<d_block_offset_bits) + i];
                     }
                 }
             }
@@ -279,9 +279,9 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 // save the address
                 write_addr = (d_cache.tag[d_block_index] << d_cache_tag_bits) | d_block_index;
                 // write the whole cache block to the write buffer
-                for(int i = 0; i < (DCACHE_BLOCK_SIZE - 1); i++)
+                for(int i = 0; i < (DCACHE_BLOCK_SIZE); i++)
                 {
-                    write_buffer[i] = d_cache.data[ (d_block_index << d_block_offset_bits) + i ];
+                    write_buffer[i] = d_cache.data[ ((cache_addr>>d_block_offset_bits)<<d_block_offset_bits) + i ];
                 }
             }
 
@@ -313,7 +313,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
         if(d_cache.tag[d_block_index] == dcache_tag)
         {
             //cache hit
-            d_cache.data[address] = *data;
+            d_cache.data[cache_addr] = *data;
             d_cache.dirty[d_block_index] = 1;
 
         }
@@ -328,9 +328,9 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 // save the address
                 write_addr = (d_cache.tag[d_block_index] << d_cache_tag_bits) | d_block_index;
                 // write the whole cache block to the write buffer
-                for(int i = 0; i < (DCACHE_BLOCK_SIZE - 1); i++)
+                for(int i = 0; i < (DCACHE_BLOCK_SIZE); i++)
                 {
-                    write_buffer[i] = d_cache.data[ (d_block_index << d_block_offset_bits) + i ];
+                    write_buffer[i] = d_cache.data[ ((cache_addr>>d_block_offset_bits)<<d_block_offset_bits) + i ];
                 }
             }
             else
@@ -340,7 +340,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 for(int i = 0; i < DCACHE_BLOCK_SIZE; i++)
                 {
                      printf("Cache miss on write, bring data from memory[%d]\n", ((((address>>d_block_offset_bits)<<d_block_offset_bits) + i) ) );
-                    d_cache.data[((address>>d_block_offset_bits)<<d_block_offset_bits) + i] = memory[(((address>>d_block_offset_bits)<<d_block_offset_bits) + i)];
+                    d_cache.data[((cache_addr>>d_block_offset_bits)<<d_block_offset_bits) + i] = memory[(((address>>d_block_offset_bits)<<d_block_offset_bits) + i)];
                 }
             }
             //put data into cache
@@ -585,7 +585,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int block_
 
 
 
-
+/*
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000bb8,	//	$sp = 3000
 0x00000bb8,	//	$fp = 3000
@@ -1081,10 +1081,10 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x0f0f0000,
 0x0000e000,
 };
+*/
 
 
 
-/*
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000898,	// $sp = 2200
 0x00000898,	// $fp = 2200
@@ -1359,4 +1359,4 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x65736172,   // 	esar
 0x00000000,   // 	nop
 };
-*/
+
