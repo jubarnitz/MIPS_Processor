@@ -41,11 +41,6 @@ int main()
 		EX();
 		MEM();
 		Update();
-// clock cycle == 1772 finished copy_array
-// clock cycle ==  1810 start bubble sort
-// clock cycle == 554622
-//		if(clock_cycle >= 466)
-//        { printf("stop!!!"); }
 
 	}
 	// for Program 1, prints in decimal
