@@ -32,6 +32,8 @@ void WB();
 void Update();
 
 int clock_cycle;
+int stall_pipe;
+int data_hazard;
 
 IF_ID IFID;
 ID_EX IDEX;

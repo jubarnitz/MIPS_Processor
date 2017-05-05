@@ -9,7 +9,11 @@
 
 int main()
 {
+
 	clock_cycle = 0;
+	stall_pipe = 0;
+	data_hazard = 0;
+
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
 
@@ -22,7 +26,8 @@ int main()
 	init_reg();
 
 	PC.pc = memory[5];
-	//init_d_cache();
+	init_i_cache();
+	init_d_cache();
 
 	/*----------  Execute MIPS program  ----------*/
 
@@ -36,20 +41,13 @@ int main()
 		EX();
 		MEM();
 		Update();
-// clock cycle == 1772 finished copy_array
-// clock cycle ==  1810 start bubble sort
-// clock cycle == 554622
-//		if(clock_cycle > 700000)
-//        {
-//            break;
-//        }
 
 	}
 	// for Program 1, prints in decimal
-	/*printf("memory[6] = %d\n", memory[6]);
-	printf("memory[7] = %d\n", memory[7]);
-	printf("memory[8] = %d\n", memory[8]);
-	printf("memory[9] = %d\n", memory[9]);*/
+	//printf("memory[6] = %d\n", memory[6]);
+	//printf("memory[7] = %d\n", memory[7]);
+	//printf("memory[8] = %d\n", memory[8]);
+	//printf("memory[9] = %d\n", memory[9]);
 
     // for Program 2, prints 7, 8, & 9 in hex
 	printf("memory[6] = %d\n", memory[6]);
@@ -57,10 +55,14 @@ int main()
 	printf("memory[8] = %#010x\n", memory[8]);
 	printf("memory[9] = %#010x\n", memory[9]);
 
+
 }
 
 void IF()
 {
+    int data_valid;
+    unsigned int instr = 0;
+    printf("In Instruction Fetch stage\n");
     // Branch Logic
 	PC.pc_src = IDEX.branch;
 	if(PC.pc_src)
@@ -68,11 +70,22 @@ void IF()
 		// go to instruction from branch
 		PC.pc = IDEX.branch_target;
 	}
+    printf("PC.pc = %d\n", PC.pc);
 
-	unsigned int instr = memory[PC.pc];
-	printf("In Instruction Fetch stage\n");
-	printf("instruction = 0x%08x\n", instr);
-	printf("PC.pc = %d\n", PC.pc);
+    if (ICACHE_ON)
+    {
+        data_valid = icache_access(PC.pc, &instr);
+        if(!data_valid)
+        {
+            printf("\nStalll\n");
+            stall_pipe = 1;
+        }
+    }
+    else
+    {
+        instr = memory[PC.pc];
+    }
+	printf("\ninstruction = 0x%08x\n", instr);
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;
@@ -84,29 +97,15 @@ void IF()
 	IFID_SHADOW.jmp_addr = (instr & jump_MASK);
 	IFID_SHADOW.PC_Next = PC.pc + 1;
 
-    /*
-	printf("OP code = 0x%x\n", IFID_SHADOW.OP_Code);
-	printf("RS = %d\n", IFID_SHADOW.reg_RS);
-	printf("RT = %d\n", IFID_SHADOW.reg_RT);
-	printf("RD = %d\n", IFID_SHADOW.reg_RD);
-	printf("sham= %d\n", IFID_SHADOW.sham);
-	printf("func = 0x%x\n", IFID_SHADOW.func);
-	printf("imm = %d\n", IFID_SHADOW.imm);
-	printf("jump addr = 0x%x\n", IFID_SHADOW.jmp_addr);
-	*/
-
-
     // increment the pc by 1 to next instruction
 	PC.pc = PC.pc + 1;
 }
 
 int ID()
 {
-	//TODO: add data hazard detection for jr instr
 	printf("In instruction Decode stage\n");
 	switch(IFID.OP_Code)
 	{
-		//TODO: combine cases when it makes sense
 
 		//R-format
 		case 0x0:
@@ -325,10 +324,7 @@ int ID()
             IDEX_SHADOW.reg_RS = IFID.reg_RS;
             IDEX_SHADOW.reg_RT = IFID.reg_RT;
             IDEX_SHADOW.reg_RD = IFID.reg_RD;
-            //printf(" RS value = %d\n", IDEX_SHADOW.Reg_RS_val);
-            //printf("IFID.imm = %d\n", IFID.imm);
             IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
-            //printf("IDEX_SHADOW.sign_ext_imm = %d\n", IDEX_SHADOW.sign_ext_imm);
             IDEX_SHADOW.PC_Next = IFID.PC_Next;
             IDEX_SHADOW.I_format = 1;
             // Branch forward logic
@@ -577,14 +573,12 @@ int ID()
         //stall the pipeline
         //prevent pc from incrementing
         PC.pc = PC.pc - 1;
+        data_hazard = 1;
         // flush
         Flush_IF_ID(&IFID_SHADOW);
         printf("\nID(): Load Data Hazard Stalling\n");
     }
-    if(clock_cycle == 1790)
-    {
-        printf("IDEX.OP_Code = %d; IDEX.WB_reg = %d; \n", IDEX.OP_Code, IDEX.WB_reg);
-    }
+
     // I format instructions: addi, addiu, andi, xori, beq, bne, bgtz, bltz, blez, lb, lbu, lhu, lui, lw, ori, slti, sltiu, sb, sh, sw,
     // Check for data dependence upon previous instruction from branch
     if( (( (EXMEM.Mem_Read) && ((EXMEM.WB_reg == IFID.reg_RT) || (EXMEM.WB_reg == IFID.reg_RS)) && (EXMEM.WB_reg != 0x00) )
@@ -599,6 +593,7 @@ int ID()
         PC.pc = PC.pc -1;
         IFID_SHADOW = IFID;
         Flush_ID_EX(&IDEX_SHADOW);
+        data_hazard = 1;
     }
 	return 0;
 }
@@ -622,6 +617,10 @@ void EX()
     {
         ALU_B = EXMEM.ALU_result;
         printf("EX(): Forwarding from EXMEM to RT: ALU B = %d\n", ALU_B);
+        if(IDEX.OP_Code == 0x28 || IDEX.OP_Code == 0x29 || IDEX.OP_Code == 0x25)
+        {
+            EXMEM_SHADOW.Reg_RT_val = EXMEM.ALU_result;
+        }
     }
     //Forwarding Logic from the MEMWB Register
     if ( MEMWB.Reg_Wrt && (MEMWB.WB_reg != 0)
@@ -643,13 +642,13 @@ void EX()
         && (MEMWB.WB_reg == IDEX.reg_RT) )
     {
         if(MEMWB.Mem_to_Reg)
- +        {
- +            ALU_B = MEMWB.Data_Mem_result;
- +        }
- +        else
- +        {
- +            ALU_B = MEMWB.ALU_result;
- +        }
+        {
+            ALU_B = MEMWB.Data_Mem_result;
+        }
+        else
+        {
+            ALU_B = MEMWB.ALU_result;
+        }
         EXMEM_SHADOW.Reg_RT_val = MEMWB.Data_Mem_result;
         printf("EX(): Forwarding from MEMWB to RT: ALU B = %d and RT_val = %d\n", ALU_A, EXMEM_SHADOW.Reg_RT_val);
     }
@@ -788,6 +787,7 @@ void EX()
     {
         char byte_of_RT = ALU_B; // get just a byte of RT
         EXMEM_SHADOW.ALU_result = byte_of_RT; // now sign extend it
+        EXMEM_SHADOW.Reg_RT_val = byte_of_RT;
     }
     // lb, lbu, lhu lw, sb, sh, and sw instruction
     else if(IDEX.OP_Code == 0x20 || IDEX.OP_Code == 0x23 || IDEX.OP_Code == 0x24 || IDEX.OP_Code == 0x28
@@ -844,40 +844,50 @@ void EX()
 	EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
 	EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
 	EXMEM_SHADOW.OP_Code = IDEX.OP_Code;
-
-	//Handle Forwarding issues
-
 }
 
 int MEM()
 {
 	printf("In Memory stage\n");
 	int word = 0;
+	int data_valid = 0;
 
 	//write data to memory
 	if(EXMEM.Mem_Wrt == 1)
 	{
+		unsigned int write_val;
+		unsigned int mem_val;
 		// wtite to memory
 		word = EXMEM.Reg_RT_val;
-		//memory[EXMEM.ALU_result] = EXMEM.Reg_RT_val
+
+		if(WRITE_BACK)
+        {
+            //because with write back cache and memory might not be the same
+            // need to check cache first then memory
+            mem_val = RMW_dcache(EXMEM.ALU_result);
+        }
+        else
+        {
+            mem_val = memory[EXMEM.ALU_result];
+        }
+
 		// sw instruction
 		if(EXMEM.OP_Code == 0x2B)
         {
             printf("In mem! EXMEM.ALU_result = %d\n", EXMEM.ALU_result);
-            memory[EXMEM.ALU_result] = word;
-            printf("after store word\n");
+            write_val = word;
         }
         else if(EXMEM.OP_Code == 0x29)
         {
             if(EXMEM.which_half == 0)
             {
-                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_0);
-                memory[EXMEM.ALU_result] = (word << 16) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_HALFWORD_0);
+                write_val = (word << 16) | mem_val;
             }
             else if(EXMEM.which_half == 1)
             {
-                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_1);
-                memory[EXMEM.ALU_result] = (word) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_HALFWORD_1);
+                write_val = (word) | mem_val;
             }
             else
             {
@@ -891,24 +901,24 @@ int MEM()
             if(EXMEM.which_byte == 0)
             {
                 // zero out byte 0
-                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_0);
                 // shift value to correct position and or with the memory value
-                memory[EXMEM.ALU_result] = (word << 24) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_0);
+                write_val = (word << 24) | mem_val;
             }
             else if(EXMEM.which_byte == 1)
             {
-                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_1);
-                memory[EXMEM.ALU_result] = (word << 16) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_1);
+                write_val = (word << 16) | mem_val;
             }
             else if(EXMEM.which_byte == 2)
             {
-                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_2);
-                memory[EXMEM.ALU_result] = (word << 8) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_2);
+                write_val = (word << 8) | mem_val;
             }
             else if(EXMEM.which_byte == 3)
             {
-                memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_3);
-                memory[EXMEM.ALU_result] = word | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_3);
+                write_val = word | mem_val;
             }
             else
             {
@@ -916,62 +926,93 @@ int MEM()
                 exit(-1);
             }
         }
+        if(DCACHE_ON)
+        {
+            //write to d_cache
+            data_valid = dcache_access(0, EXMEM.ALU_result, &write_val);
+            if(!data_valid)
+            {
+                stall_pipe = 1;
+            }
+        }
+        else
+        {
+            memory[EXMEM.ALU_result] = write_val;
+        }
 	}
-
+    // Read from mem
 	if(EXMEM.Mem_Read == 1)
 	{
-		word = memory[EXMEM.ALU_result];
-		// lw instruction
-		if(EXMEM.OP_Code == 0x23)
+        if (DCACHE_ON)
         {
-            MEMWB_SHADOW.Data_Mem_result = word;
+            data_valid = dcache_access(1, EXMEM.ALU_result, &word);
         }
-        // lhu instruction
-        else if(EXMEM.OP_Code == 0x25)
+        else
         {
-            if(EXMEM.which_half == 0)
-            {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_0) >> 16;
-            }
-            else if(EXMEM.which_half == 1)
-            {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_1);
-            }
-            else
-            {
-                printf("Error: In lhu instruction, Unknown half word value!\n");
-                exit(-1);
-            }
+            data_valid = 1;
+            word = memory[EXMEM.ALU_result];
         }
-        // lb and lbu instruction
-        else if(EXMEM.OP_Code == 0x20 || EXMEM.OP_Code == 0x24)
+
+        if(!data_valid)
         {
-            if(EXMEM.which_byte == 0)
+                stall_pipe = 1;
+        }
+        else
+        {
+            // lw instruction
+            if(EXMEM.OP_Code == 0x23)
             {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_0) >> 24;
+
+                MEMWB_SHADOW.Data_Mem_result = word;
+
             }
-            else if(EXMEM.which_byte == 1)
+            // lhu instruction
+            else if(EXMEM.OP_Code == 0x25)
             {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_1) >> 16;
+                if(EXMEM.which_half == 0)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_0) >> 16;
+                }
+                else if(EXMEM.which_half == 1)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_HALFWORD_1);
+                }
+                else
+                {
+                    printf("Error: In lhu instruction, Unknown half word value!\n");
+                    exit(-1);
+                }
             }
-            else if(EXMEM.which_byte == 2)
+            // lb and lbu instruction
+            else if(EXMEM.OP_Code == 0x20 || EXMEM.OP_Code == 0x24)
             {
-                MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_2) >> 8;
-            }
-            else if(EXMEM.which_byte == 3)
-            {
-                MEMWB_SHADOW.Data_Mem_result = word & BIG_END_BYTE_3;
-            }
-            else //Unknown which byte value
-            {
-                printf("Error: In lbu instruction, Unknown byte value!\n");
-                exit(-1);
-            }
-            // sign-extend the result if lb instruction
-            if (EXMEM.OP_Code == 0x20)
-            {
-                char c = MEMWB_SHADOW.Data_Mem_result; // get just the one byte so we can sign-extend it
-                MEMWB_SHADOW.Data_Mem_result = c; // this sign-extends the byte
+                if(EXMEM.which_byte == 0)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_0) >> 24;
+                }
+                else if(EXMEM.which_byte == 1)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_1) >> 16;
+                }
+                else if(EXMEM.which_byte == 2)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = (word & BIG_END_BYTE_2) >> 8;
+                }
+                else if(EXMEM.which_byte == 3)
+                {
+                    MEMWB_SHADOW.Data_Mem_result = word & BIG_END_BYTE_3;
+                }
+                else //Unknown which byte value
+                {
+                    printf("Error: In lbu instruction, Unknown byte value!\n");
+                    exit(-1);
+                }
+                // sign-extend the result if lb instruction
+                if (EXMEM.OP_Code == 0x20)
+                {
+                    char c = MEMWB_SHADOW.Data_Mem_result; // get just the one byte so we can sign-extend it
+                    MEMWB_SHADOW.Data_Mem_result = c; // this sign-extends the byte
+                }
             }
 
         }
@@ -1004,14 +1045,36 @@ void WB()
 
 void Update()
 {
-	IFID = IFID_SHADOW;
-	IDEX = IDEX_SHADOW;
-	EXMEM = EXMEM_SHADOW;
-	MEMWB = MEMWB_SHADOW;
+    mem_update();
+    icache_update();
+    dcache_update();
+
+	if(stall_pipe)
+    {
+        IFID = IFID;
+        IDEX = IDEX;
+        EXMEM = EXMEM;
+        MEMWB = MEMWB;
+        if(data_hazard)
+        {
+            data_hazard = 0; // if there's a data hazard, pc has already been decremented
+        } else {
+            PC.pc -= 1; // only decrement pc if no data hazard
+        }
+        stall_pipe = 0;
+    }
+    else
+    {
+        IFID = IFID_SHADOW;
+        IDEX = IDEX_SHADOW;
+        EXMEM = EXMEM_SHADOW;
+        MEMWB = MEMWB_SHADOW;
+        data_hazard = 0;
+    }
 	clock_cycle++;
 
-	printf("v0 = %d\n", reg[2]);
-	printf("v1 = %d\n", reg[3]);
+	printf("v0 = %#010x\n", reg[2]);
+	printf("v1 = %#010x\n", reg[3]);
 	printf("a0 = %d\n", reg[4]);
 	printf("a1 = %d\n", reg[5]);
 	printf("a2 = %d\n", reg[6]);
