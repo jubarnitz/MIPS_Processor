@@ -292,11 +292,31 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             dcache_req_index = d_block_index;
             dcache_req_blkoffset = d_block_offset;
             dcache_req_cache_addr = cache_addr - d_block_offset;
+
+            // If the current block is dirty, save to the write buffer before bring in new block
+            if(WRITE_BACK && (d_cache.dirty[dcache_req_index] == 1) && !write_back_to_occur)
+            {
+                printf("Data block is dirty. Placing data into write buffer\n");
+                for(int i = 0; i < BLOCK_SIZE; i++)
+                {
+                    write_buffer[i] = d_cache.data[dcache_req_cache_addr + i];
+                }
+                write_back_address = (d_cache.tag[dcache_req_index] << d_cache_tag_bits) + (dcache_req_index << d_block_offset_bits);
+                write_back_to_occur = 1;
+            }
+            // If the write buffer is already full stall the pipe
+            else if(WRITE_BACK && write_back_to_occur)
+            {
+                printf("Data block is dirty, but write buffer is full, must stall\n");
+                return 0;
+            }
+
             // pass to memory access the address of the start of the block
             mem_data_valid = memory_access(1, dcache_req_addr_beginning, &mem_data, 0);
             dcache_read_req = 1;
             d_cache.tag[dcache_req_index] = dcache_req_tag;
             d_cache.valid[dcache_req_index] = 0;
+            d_cache.dirty[dcache_req_index] = 0;
             dcache_blocks_filled = 0;
             dcache_data_valid = 0;
         }
@@ -344,15 +364,11 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
                 mem_data_valid = memory_access(0, address, data, 0);
                 dcache_read_req = 0;
                 d_cache.tag[dcache_req_index] = dcache_req_tag;
-                d_cache.valid[dcache_req_index] = 0;
+                //d_cache.valid[dcache_req_index] = 0;
                 dcache_blocks_filled = 0;
                 //dcache_data_valid = 0;
 
                 // ...
-            }
-            else // save to write buffer
-            {
-
             }
             dcache_data_valid = 1;
         }
@@ -369,6 +385,25 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             dcache_req_index = d_block_index;
             dcache_req_blkoffset = d_block_offset;
             dcache_req_cache_addr = cache_addr - d_block_offset;
+
+            // If the current block is dirty, save to the write buffer before bring in new block
+            if(WRITE_BACK && (d_cache.dirty[dcache_req_index] == 1) && !write_back_to_occur)
+            {
+                printf("Data block is dirty. Placing data into write buffer\n");
+                for(int i = 0; i < BLOCK_SIZE; i++)
+                {
+                    write_buffer[i] = d_cache.data[dcache_req_cache_addr + i];
+                }
+                write_back_address = (d_cache.tag[dcache_req_index] << d_cache_tag_bits) + (dcache_req_index << d_block_offset_bits);
+                write_back_to_occur = 1;
+            }
+            // If the write buffer is already full stall the pipe
+            else if(WRITE_BACK && (d_cache.dirty[dcache_req_index] == 1) && write_back_to_occur)
+            {
+                printf("Data block is dirty, but write buffer is full, must stall\n");
+                return 0;
+            }
+
             // pass to memory access the address of the start of the block
             mem_data_valid = memory_access(1, dcache_req_addr_beginning, &mem_data, 0);
             dcache_read_req = 1;
@@ -559,7 +594,14 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
         else
         {
             printf(" In Memory: Creating new Dcache request\n");
-            mem_counter = 6;
+            if(read)
+            {
+                mem_counter = 7;
+            }
+            else
+            {
+                mem_counter = 6;
+            }
             mem_handling_dcache_req = 1;
         }
         mem_blksize = BLOCK_SIZE;
@@ -620,7 +662,20 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
                 // If the req was write_back, it will write the whole block back
                 if(WRITE_BACK)
                 {
-
+                    printf("Writing write buffer to memory\n");
+                    memory[address] = *data;
+                    data_valid = 1;
+                    if( mem_blksize == 0 )
+                    {
+                        printf("Memory has filled all blocks of the request\n");
+                        mem_handling_dcache_req = 0;
+                    }
+                    // If more blocks to be filled, add penalty of 2
+                    else
+                    {
+                        printf("Memory adding next block penalty\n");
+                        mem_counter = 2;
+                    }
                 }
                 else
                 {
@@ -886,8 +941,8 @@ void icache_update()
 void dcache_update()
 {
     int mem_data_valid = 0;
-    unsigned int mem_data;
-    unsigned int dcache_next_req_addr;
+    unsigned int mem_data = 0;
+    unsigned int dcache_next_req_addr = 0;
     // If icache has not been checked this cycle
     if( filling_dcache )
     {
@@ -911,22 +966,58 @@ void dcache_update()
                 {
                     filling_dcache = 0;
                     d_cache.valid[dcache_req_index] = 1;
+                    // reset blocks filled to zero incase a write back need to occur
+                    dcache_blocks_filled = 0;
+                    // handle write back
+                    if(WRITE_BACK && write_back_to_occur)
+                    {
+                        printf("In dcache update, setting up write back\n");
+                        //write_back_to_occur = 0;
+                        dcache_read_req = 0;
+                        filling_dcache = 1;
+                        //write_back_happing = 1;
+                    }
                 }
             }
         }
         else
         {
-            mem_data = d_cache.data[dcache_req_cache_addr];
-            // pass to memory access the address of the waiting block offset
-            // this was passing in a base addr instead of the correct offset addr
-            //mem_data_valid = memory_access(0, dcache_next_req_addr, &mem_data, 0);
-            mem_data_valid = memory_access(0, dcache_req_addr_beginning + dcache_blocks_filled, &mem_data, 0); //dcache_req_blkoffset
-            // memory has data for i cache
-            if(mem_data_valid)
+            // This is write through, only one word will be written to memory
+            if(!WRITE_BACK)
             {
-                filling_dcache = 0;
-                d_cache.valid[dcache_req_index] = 1;
+                mem_data = d_cache.data[dcache_req_cache_addr];
+                // pass to memory access the address of the waiting block offset
+                // this was passing in a base addr instead of the correct offset addr
+                //mem_data_valid = memory_access(0, dcache_next_req_addr, &mem_data, 0);
+                mem_data_valid = memory_access(0, dcache_req_addr_beginning + dcache_blocks_filled, &mem_data, 0); //dcache_req_blkoffset
+                // memory has data for i cache
+                if(mem_data_valid)
+                {
+                    filling_dcache = 0;
+                    d_cache.valid[dcache_req_index] = 1;
+                }
             }
+            // this is write back, must write full block to memory
+            else
+            {
+                // grab data from write buffer
+                mem_data = write_buffer[dcache_blocks_filled];
+                // write to mem
+                mem_data_valid = memory_access(0, write_back_address + dcache_blocks_filled, &mem_data, 0);
+
+                if(mem_data_valid)
+                {
+                    dcache_blocks_filled++;
+
+                    // check if all blocks have been written
+                    if(dcache_blocks_filled == BLOCK_SIZE)
+                    {
+                        filling_dcache = 0;
+                        write_back_to_occur = 0;
+                    }
+                }
+            }
+
         }
     }
     dcache_checked = 0;
@@ -935,7 +1026,7 @@ void dcache_update()
 
 
 
-
+/*
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000bb8,	//	$sp = 3000
 0x00000bb8,	//	$fp = 3000
@@ -1431,12 +1522,12 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x0f0f0000,
 0x0000e000,
 };
+*/
 
 
 
 
 
-/*
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000898,	// $sp = 2200
 0x00000898,	// $fp = 2200
@@ -1711,4 +1802,4 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x65736172,   // 	esar
 0x00000000,   // 	nop
 };
-*/
+

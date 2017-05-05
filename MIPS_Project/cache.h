@@ -5,14 +5,14 @@
 #include "pipe_reg.h"
 #include <math.h>
 
-#define WRITE_BACK 0
-#define BLOCK_SIZE 16                // words
+#define WRITE_BACK 1
+#define BLOCK_SIZE 4                // words
 
-#define ICACHE_ON 1                 // 0 = false, 1 = true
+#define ICACHE_ON 0                 // 0 = false, 1 = true
 #define ICACHE_SIZE 128             // bytes
 
 #define DCACHE_ON 1                 // 0 = false, 1 = true
-#define DCACHE_SIZE 256             // bytes
+#define DCACHE_SIZE 64             // bytes
 
 #define NUM_REGISTERS 32
 #define MEMORY_SIZE 3000            // words
@@ -97,6 +97,7 @@ int mem_penalty_count;
 int mem_handling_write_req;
 int reset_mem_penalty_count;
 int write_back_to_occur;
+unsigned int write_back_address;
 
 
 unsigned int memory[MEMORY_SIZE];

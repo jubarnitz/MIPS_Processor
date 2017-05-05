@@ -50,16 +50,16 @@ int main()
 
 	}
 	// for Program 1, prints in decimal
-	printf("memory[6] = %d\n", memory[6]);
-	printf("memory[7] = %d\n", memory[7]);
-	printf("memory[8] = %d\n", memory[8]);
-	printf("memory[9] = %d\n", memory[9]);
+	//printf("memory[6] = %d\n", memory[6]);
+	//printf("memory[7] = %d\n", memory[7]);
+	//printf("memory[8] = %d\n", memory[8]);
+	//printf("memory[9] = %d\n", memory[9]);
 
     // for Program 2, prints 7, 8, & 9 in hex
-	/*printf("memory[6] = %d\n", memory[6]);
+	printf("memory[6] = %d\n", memory[6]);
 	printf("memory[7] = %#010x\n", memory[7]);
 	printf("memory[8] = %#010x\n", memory[8]);
-	printf("memory[9] = %#010x\n", memory[9]);*/
+	printf("memory[9] = %#010x\n", memory[9]);
 
 
 }
