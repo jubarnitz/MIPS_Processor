@@ -13,7 +13,6 @@ int main()
 	clock_cycle = 0;
 	stall_pipe = 0;
 	data_hazard = 0;
-	reset_mem_penalty_count = 0;
 
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
@@ -91,31 +90,7 @@ void IF()
     {
         instr = memory[PC.pc];
     }
-	//instr = memory[PC.pc];
-
 	printf("\ninstruction = 0x%08x\n", instr);
-
-	if (PC.pc == 41)
-	{ printf("target pc\n"); }
-
-    if(clock_cycle == 419)
-    {
-        printf("Hold up\n");
-    }
-    if(instr == 0x80a70000)
-    { printf("start function\n"); }
-
-    if(instr == 0x8c050008)
-    { printf("lw\n"); }
-
-    if(instr == 65011720)
-    { printf("jr instruction\n"); }
-
-    if(instr == 0x18c00008)
-    { printf("\n\nStart 0f copy function\n\n"); }
-
-    if(instr == 0x1ca00018)
-    { printf("\n\nStart 0f bubble function\n\n"); }
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;
@@ -127,29 +102,15 @@ void IF()
 	IFID_SHADOW.jmp_addr = (instr & jump_MASK);
 	IFID_SHADOW.PC_Next = PC.pc + 1;
 
-    /*
-	printf("OP code = 0x%x\n", IFID_SHADOW.OP_Code);
-	printf("RS = %d\n", IFID_SHADOW.reg_RS);
-	printf("RT = %d\n", IFID_SHADOW.reg_RT);
-	printf("RD = %d\n", IFID_SHADOW.reg_RD);
-	printf("sham= %d\n", IFID_SHADOW.sham);
-	printf("func = 0x%x\n", IFID_SHADOW.func);
-	printf("imm = %d\n", IFID_SHADOW.imm);
-	printf("jump addr = 0x%x\n", IFID_SHADOW.jmp_addr);
-	*/
-
-
     // increment the pc by 1 to next instruction
 	PC.pc = PC.pc + 1;
 }
 
 int ID()
 {
-	//TODO: add data hazard detection for jr instr
 	printf("In instruction Decode stage\n");
 	switch(IFID.OP_Code)
 	{
-		//TODO: combine cases when it makes sense
 
 		//R-format
 		case 0x0:
@@ -368,10 +329,7 @@ int ID()
             IDEX_SHADOW.reg_RS = IFID.reg_RS;
             IDEX_SHADOW.reg_RT = IFID.reg_RT;
             IDEX_SHADOW.reg_RD = IFID.reg_RD;
-            //printf(" RS value = %d\n", IDEX_SHADOW.Reg_RS_val);
-            //printf("IFID.imm = %d\n", IFID.imm);
             IDEX_SHADOW.sign_ext_imm = (int)IFID.imm;
-            //printf("IDEX_SHADOW.sign_ext_imm = %d\n", IDEX_SHADOW.sign_ext_imm);
             IDEX_SHADOW.PC_Next = IFID.PC_Next;
             IDEX_SHADOW.I_format = 1;
             // Branch forward logic
@@ -891,9 +849,6 @@ void EX()
 	EXMEM_SHADOW.Mem_to_Reg = IDEX.Mem_to_Reg;
 	EXMEM_SHADOW.Mem_Wrt = IDEX.Mem_Wrt;
 	EXMEM_SHADOW.OP_Code = IDEX.OP_Code;
-
-	//Handle Forwarding issues
-
 }
 
 int MEM()
@@ -906,32 +861,38 @@ int MEM()
 	if(EXMEM.Mem_Wrt == 1)
 	{
 		unsigned int write_val;
+		unsigned int mem_val;
 		// wtite to memory
 		word = EXMEM.Reg_RT_val;
-		//memory[EXMEM.ALU_result] = EXMEM.Reg_RT_val
+
+		if(WRITE_BACK)
+        {
+            //because with write back cache and memory might not be the same
+            // need to check cache first then memory
+            mem_val = RMW_dcache(EXMEM.ALU_result);
+        }
+        else
+        {
+            mem_val = memory[EXMEM.ALU_result];
+        }
+
 		// sw instruction
 		if(EXMEM.OP_Code == 0x2B)
         {
             printf("In mem! EXMEM.ALU_result = %d\n", EXMEM.ALU_result);
-            //memory[EXMEM.ALU_result] = word;
-            //printf("after store word\n");
             write_val = word;
         }
         else if(EXMEM.OP_Code == 0x29)
         {
             if(EXMEM.which_half == 0)
             {
-                //memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_0);
-                //memory[EXMEM.ALU_result] = (word << 16) | memory[EXMEM.ALU_result];
-                write_val = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_0);
-                write_val = (word << 16) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_HALFWORD_0);
+                write_val = (word << 16) | mem_val;
             }
             else if(EXMEM.which_half == 1)
             {
-                //memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_1);
-                //memory[EXMEM.ALU_result] = (word) | memory[EXMEM.ALU_result];
-                write_val = memory[EXMEM.ALU_result] & ~(BIG_END_HALFWORD_1);
-                write_val = (word) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_HALFWORD_1);
+                write_val = (word) | mem_val;
             }
             else
             {
@@ -945,32 +906,24 @@ int MEM()
             if(EXMEM.which_byte == 0)
             {
                 // zero out byte 0
-                //memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_0);
                 // shift value to correct position and or with the memory value
-                //memory[EXMEM.ALU_result] = (word << 24) | memory[EXMEM.ALU_result];
-                write_val = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_0);
-                write_val = (word << 24) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_0);
+                write_val = (word << 24) | mem_val;
             }
             else if(EXMEM.which_byte == 1)
             {
-                //memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_1);
-                //memory[EXMEM.ALU_result] = (word << 16) | memory[EXMEM.ALU_result];
-                write_val = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_1);
-                write_val = (word << 16) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_1);
+                write_val = (word << 16) | mem_val;
             }
             else if(EXMEM.which_byte == 2)
             {
-                //memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_2);
-                //memory[EXMEM.ALU_result] = (word << 8) | memory[EXMEM.ALU_result];
-                write_val = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_2);
-                write_val = (word << 8) | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_2);
+                write_val = (word << 8) | mem_val;
             }
             else if(EXMEM.which_byte == 3)
             {
-                //memory[EXMEM.ALU_result] = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_3);
-                //memory[EXMEM.ALU_result] = word | memory[EXMEM.ALU_result];
-                write_val = memory[EXMEM.ALU_result] & ~(BIG_END_BYTE_3);
-                write_val = word | memory[EXMEM.ALU_result];
+                write_val = mem_val & ~(BIG_END_BYTE_3);
+                write_val = word | mem_val;
             }
             else
             {
@@ -1011,7 +964,6 @@ int MEM()
         }
         else
         {
-            //word = memory[EXMEM.ALU_result];
             // lw instruction
             if(EXMEM.OP_Code == 0x23)
             {
@@ -1098,49 +1050,6 @@ void WB()
 
 void Update()
 {
-    /*
-    if (mem_handling_dcache_req && mem_penalty_count == main_memory_penalty)
-    {
-        main_memory_penalty = 0;
-        mem_penalty_count = 0;
-        filling_d_cache = 0;
-        d_cache.valid[d_block_index] = 1;
-        d_cache.dirty[d_block_index] = 0;
-        mem_handling_dcache_req = 0;
-        reset_mem_penalty_count = 1;
-        // Add in write back penalty
-        if( (WRITE_BACK) && (write_back_to_occur) )
-        {
-            printf("\n Write Back occurring\n");
-            write_back_to_occur = 0;
-            // at write penalty
-            main_memory_penalty += 6;
-            if(DCACHE_BLOCK_SIZE > 1)
-            {
-                for(int i = 0; i < DCACHE_BLOCK_SIZE - 1; i++)
-                {
-                    main_memory_penalty += 2;
-                }
-            }
-            //write data to memory
-            for(int i = 0; i < DCACHE_BLOCK_SIZE -1; i++)
-            {
-                memory[write_addr + i] = d_cache.data[write_addr + i];
-            }
-            mem_handling_dcache_req = 1;
-        }
-    }
-
-    if(mem_handling_write_req && (mem_penalty_count == main_memory_penalty))
-    {
-        main_memory_penalty = 0;
-        mem_penalty_count = 0;
-        mem_handling_write_req = 0;
-        //this is wrong block_index
-        d_cache.dirty[d_block_index] = 0;
-        reset_mem_penalty_count = 1;
-    }
-*/
     mem_update();
     icache_update();
     dcache_update();
@@ -1168,15 +1077,6 @@ void Update()
         data_hazard = 0;
     }
 	clock_cycle++;
-	//main_memory_penalty--;
-	if(reset_mem_penalty_count)
-	{
-	    reset_mem_penalty_count = 0;
-	}
-	else
-    {
-        mem_penalty_count++;
-    }
 
 	printf("v0 = %#010x\n", reg[2]);
 	printf("v1 = %#010x\n", reg[3]);
