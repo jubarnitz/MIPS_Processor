@@ -13,6 +13,7 @@ int main()
 	clock_cycle = 0;
 	stall_pipe = 0;
 	data_hazard = 0;
+	instr_count = 0;
 
 	/*----------  Init State Elements   ----------*/
 	printf("Starting Processor\n");
@@ -54,7 +55,11 @@ int main()
 	printf("memory[7] = %#010x\n", memory[7]);
 	printf("memory[8] = %#010x\n", memory[8]);
 	printf("memory[9] = %#010x\n", memory[9]);
-
+	printf("Total instructions = %d\n", instr_count);
+	printf("CPI = %.3f\n", (float)clock_cycle/(float)instr_count);
+	printf("I Cache hit rate = %.2f%\n", 100*((float)icache_hit_count/(float)(icache_hit_count+icache_miss_count)));
+    printf("D Cache hit rate = %.2f%\n", 100*((float)dcache_hit_count/(float)(dcache_hit_count+dcache_miss_count)));
+    printf("Total clock cycles = %d\n", clock_cycle);
 
 }
 
@@ -577,6 +582,7 @@ int ID()
         // flush
         Flush_IF_ID(&IFID_SHADOW);
         printf("\nID(): Load Data Hazard Stalling\n");
+        instr_count--;
     }
 
     // I format instructions: addi, addiu, andi, xori, beq, bne, bgtz, bltz, blez, lb, lbu, lhu, lui, lw, ori, slti, sltiu, sb, sh, sw,
@@ -594,6 +600,7 @@ int ID()
         IFID_SHADOW = IFID;
         Flush_ID_EX(&IDEX_SHADOW);
         data_hazard = 1;
+        instr_count--;
     }
 	return 0;
 }
@@ -849,7 +856,7 @@ void EX()
 int MEM()
 {
 	printf("In Memory stage\n");
-	int word = 0;
+	unsigned int word = 0;
 	int data_valid = 0;
 
 	//write data to memory
@@ -1058,6 +1065,7 @@ void Update()
         if(data_hazard)
         {
             data_hazard = 0; // if there's a data hazard, pc has already been decremented
+            instr_count++;
         } else {
             PC.pc -= 1; // only decrement pc if no data hazard
         }
@@ -1070,6 +1078,7 @@ void Update()
         EXMEM = EXMEM_SHADOW;
         MEMWB = MEMWB_SHADOW;
         data_hazard = 0;
+        instr_count++;
     }
 	clock_cycle++;
 

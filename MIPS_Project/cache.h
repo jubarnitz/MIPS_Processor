@@ -77,8 +77,10 @@ int filling_dcache;
 int dcache_blocks_filled;
 int dcache_read_req;
 
-int icache_hit;
-int dcache_hit;
+int icache_hit_count;
+int dcache_hit_count;
+int icache_miss_count;
+int dcache_miss_count;
 
 int write_back_to_occur;
 unsigned int write_back_address;
@@ -94,7 +96,7 @@ unsigned int reg[NUM_REGISTERS];
 unsigned int program_image[MEMORY_SIZE];
 
 void init_memory();
-unsigned int init_i_cache();
+void init_i_cache();
 void init_d_cache();
 void Initialize_Simulation_Memory();
 void init_reg();
