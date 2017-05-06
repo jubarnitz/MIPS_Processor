@@ -45,7 +45,7 @@ int main()
 
 	}
 
-    printf("Total instructions = %d\n\n", instr_count);
+    printf("\nTotal instructions = %d\n\n", instr_count);
 
 	// for Program 1, prints in decimal
 	//printf("memory[6] = %d\n", memory[6]);
@@ -64,7 +64,7 @@ int main()
 	if (DCACHE_ON)
         { printf("D Cache hit rate = %.2f%%\n", 100*((float)dcache_hit_count/(float)(dcache_hit_count+dcache_miss_count))); }
 	printf("CPI = %.3f\n", (float)clock_cycle/(float)instr_count);
-    printf("Total clock cycles = %d\n", clock_cycle);
+    printf("Total clock cycles = %d\n\n", clock_cycle);
 
 }
 

@@ -617,8 +617,8 @@ int RMW_dcache(unsigned int address)
     return cache_data;
 }
 
-
-
+// Program 1
+#ifdef RUN_PROG_1
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000bb8,	//	$sp = 3000
 0x00000bb8,	//	$fp = 3000
@@ -1114,12 +1114,13 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x0f0f0000,
 0x0000e000,
 };
+#endif
 
 
 
 
-
-/*
+// Program 2 
+#ifdef RUN_PROG_2
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000898,	// $sp = 2200
 0x00000898,	// $fp = 2200
@@ -1394,4 +1395,5 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x65736172,   // 	esar
 0x00000000,   // 	nop
 };
-*/
+#endif
+
