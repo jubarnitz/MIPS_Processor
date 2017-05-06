@@ -16,7 +16,7 @@ int main()
 	instr_count = 0;
 
 	/*----------  Init State Elements   ----------*/
-	printf("Starting Processor\n");
+	//printf("Starting Processor\n\n");
 
 	Flush_IF_ID(IFID_ptr);
 	Flush_ID_EX(IDEX_ptr);
@@ -34,7 +34,7 @@ int main()
 
 
 	// When the pc counter goes to zero, the program has completed
-	while(PC.pc > 1)
+	while(PC.pc > 1 || write_back_to_occur)
 	{
 		IF();
 		WB();
@@ -44,6 +44,9 @@ int main()
 		Update();
 
 	}
+
+    printf("Total instructions = %d\n\n", instr_count);
+
 	// for Program 1, prints in decimal
 	//printf("memory[6] = %d\n", memory[6]);
 	//printf("memory[7] = %d\n", memory[7]);
@@ -54,11 +57,13 @@ int main()
 	printf("memory[6] = %d\n", memory[6]);
 	printf("memory[7] = %#010x\n", memory[7]);
 	printf("memory[8] = %#010x\n", memory[8]);
-	printf("memory[9] = %#010x\n", memory[9]);
-	printf("Total instructions = %d\n", instr_count);
+	printf("memory[9] = %#010x\n\n", memory[9]);
+
+	if (ICACHE_ON)
+        { printf("I Cache hit rate = %.2f%%\n", 100*((float)icache_hit_count/(float)(icache_hit_count+icache_miss_count))); }
+	if (DCACHE_ON)
+        { printf("D Cache hit rate = %.2f%%\n", 100*((float)dcache_hit_count/(float)(dcache_hit_count+dcache_miss_count))); }
 	printf("CPI = %.3f\n", (float)clock_cycle/(float)instr_count);
-	printf("I Cache hit rate = %.2f%\n", 100*((float)icache_hit_count/(float)(icache_hit_count+icache_miss_count)));
-    printf("D Cache hit rate = %.2f%\n", 100*((float)dcache_hit_count/(float)(dcache_hit_count+dcache_miss_count)));
     printf("Total clock cycles = %d\n", clock_cycle);
 
 }
@@ -67,7 +72,7 @@ void IF()
 {
     int data_valid;
     unsigned int instr = 0;
-    printf("In Instruction Fetch stage\n");
+    //printf("In Instruction Fetch stage\n");
     // Branch Logic
 	PC.pc_src = IDEX.branch;
 	if(PC.pc_src)
@@ -75,14 +80,14 @@ void IF()
 		// go to instruction from branch
 		PC.pc = IDEX.branch_target;
 	}
-    printf("PC.pc = %d\n", PC.pc);
+//    printf("PC.pc = %d\n", PC.pc);
 
     if (ICACHE_ON)
     {
         data_valid = icache_access(PC.pc, &instr);
         if(!data_valid)
         {
-            printf("\nStalll\n");
+            //printf("\nStalll\n");
             stall_pipe = 1;
         }
     }
@@ -90,7 +95,7 @@ void IF()
     {
         instr = memory[PC.pc];
     }
-	printf("\ninstruction = 0x%08x\n", instr);
+	//printf("\ninstruction = 0x%08x\n", instr);
 
 	IFID_SHADOW.OP_Code = (instr & OP_MASK) >> 26;
 	IFID_SHADOW.reg_RS = (instr & rs_MASK) >> 21;
@@ -108,7 +113,7 @@ void IF()
 
 int ID()
 {
-	printf("In instruction Decode stage\n");
+	//printf("In instruction Decode stage\n");
 	switch(IFID.OP_Code)
 	{
 
@@ -138,7 +143,7 @@ int ID()
             {
                 IDEX_SHADOW.branch = 1;
                 IDEX_SHADOW.branch_target = IDEX_SHADOW.Reg_RS_val;
-                printf("ID(): jr instruction, jumping to : %d\n", IDEX_SHADOW.branch_target);
+                //printf("ID(): jr instruction, jumping to : %d\n", IDEX_SHADOW.branch_target);
             }
             break;
 
@@ -168,7 +173,7 @@ int ID()
                     if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
                     {
                         IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
-                        printf("ID(): bltz => Forwarding data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
+                        //printf("ID(): bltz => Forwarding data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
                     }
 
                     if (IDEX_SHADOW.Reg_RS_val < 0)
@@ -226,12 +231,12 @@ int ID()
             if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
-                printf("ID(): beq => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
+                //printf("ID(): beq => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
             }
             if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RT) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RT_val = EXMEM.ALU_result;
-                printf("ID(): beq => Forwarding RT data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RT_val);
+                //printf("ID(): beq => Forwarding RT data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RT_val);
             }
 
             if (IDEX_SHADOW.Reg_RS_val == IDEX_SHADOW.Reg_RT_val)
@@ -264,12 +269,12 @@ int ID()
             if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
-                printf("ID(): bne => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
+                //printf("ID(): bne => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
             }
             if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RT) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RT_val = EXMEM.ALU_result;
-                printf("ID(): bne => Forwarding RT data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RT_val);
+                //printf("ID(): bne => Forwarding RT data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RT_val);
             }
 
             if (IDEX_SHADOW.Reg_RS_val != IDEX_SHADOW.Reg_RT_val)
@@ -302,7 +307,7 @@ int ID()
             if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
-                printf("ID(): blez => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
+                //printf("ID(): blez => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
             }
 
             if (IDEX_SHADOW.Reg_RS_val <= 0)
@@ -315,7 +320,7 @@ int ID()
 			break;
 		// bgtz instruction
 		case 0x7:
-            printf("bgtz   rs > 0\n");
+            //printf("bgtz   rs > 0\n");
             IDEX_SHADOW.Reg_Dst = 0;
             IDEX_SHADOW.Reg_Wrt = 0;
             IDEX_SHADOW.OP_Code = IFID.OP_Code;
@@ -336,16 +341,16 @@ int ID()
             if( (EXMEM.Reg_Wrt) && (EXMEM.WB_reg == IFID.reg_RS) && !(EXMEM.Mem_Read) )
             {
                 IDEX_SHADOW.Reg_RS_val = EXMEM.ALU_result;
-                printf("ID(): bgtz => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
+                //printf("ID(): bgtz => Forwarding RS data from EXMEM, new result = %d\n", IDEX_SHADOW.Reg_RS_val);
             }
 
             if (IDEX_SHADOW.Reg_RS_val > 0)
             {
 
                 IDEX_SHADOW.branch = 1;
-                printf("IFID.PC_Next = %d\n", IFID.PC_Next);
+                //printf("IFID.PC_Next = %d\n", IFID.PC_Next);
                 IDEX_SHADOW.branch_target = IFID.PC_Next + IDEX_SHADOW.sign_ext_imm;
-                printf("bgtz => we are jumping to : %d\n", IDEX_SHADOW.branch_target);
+                //printf("bgtz => we are jumping to : %d\n", IDEX_SHADOW.branch_target);
             }
             else
                 IDEX_SHADOW.branch = 0;
@@ -560,12 +565,12 @@ int ID()
 	if(IDEX_SHADOW.Reg_Dst == 1)
 	{
 		IDEX_SHADOW.WB_reg = IDEX_SHADOW.reg_RD;
-		printf("ID(): WB_reg = RD = %d\n", IDEX_SHADOW.WB_reg);
+		//printf("ID(): WB_reg = RD = %d\n", IDEX_SHADOW.WB_reg);
 	}
 	else
 	{
 		IDEX_SHADOW.WB_reg = IDEX_SHADOW.reg_RT;
-		printf("ID(): WB_reg = RT = %d\n", IDEX_SHADOW.WB_reg);
+		//printf("ID(): WB_reg = RT = %d\n", IDEX_SHADOW.WB_reg);
 	}
 
 	//Hazard Detection Unit
@@ -581,7 +586,7 @@ int ID()
         data_hazard = 1;
         // flush
         Flush_IF_ID(&IFID_SHADOW);
-        printf("\nID(): Load Data Hazard Stalling\n");
+        //printf("\nID(): Load Data Hazard Stalling\n");
         instr_count--;
     }
 
@@ -595,7 +600,7 @@ int ID()
        )
     {
         //stall
-        printf("\nID(): Branch Data Hazard Stalling \n\n");
+        //printf("\nID(): Branch Data Hazard Stalling \n\n");
         PC.pc = PC.pc -1;
         IFID_SHADOW = IFID;
         Flush_ID_EX(&IDEX_SHADOW);
@@ -612,18 +617,18 @@ void EX()
 	// base case if forwarding does not apply
 	EXMEM_SHADOW.Reg_RT_val = IDEX.Reg_RT_val;
 
-	printf("In Execute stage\n");
+	//printf("In Execute stage\n");
 
 	//Forwarding Logic from the EXMEM Register
 	if( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg == IDEX.reg_RS) )
     {
         ALU_A = EXMEM.ALU_result;
-        printf("EX(): Forwarding from EXMEM to RS: ALU A = %d\n", ALU_A);
+        //printf("EX(): Forwarding from EXMEM to RS: ALU A = %d\n", ALU_A);
     }
     if( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg == IDEX.reg_RT) )
     {
         ALU_B = EXMEM.ALU_result;
-        printf("EX(): Forwarding from EXMEM to RT: ALU B = %d\n", ALU_B);
+        //printf("EX(): Forwarding from EXMEM to RT: ALU B = %d\n", ALU_B);
         if(IDEX.OP_Code == 0x28 || IDEX.OP_Code == 0x29 || IDEX.OP_Code == 0x25)
         {
             EXMEM_SHADOW.Reg_RT_val = EXMEM.ALU_result;
@@ -642,7 +647,7 @@ void EX()
         {
             ALU_A = MEMWB.ALU_result;
         }
-        printf("EX(): Forwarding from MEMWB to RS: ALU A = %d\n", ALU_A);
+        //printf("EX(): Forwarding from MEMWB to RS: ALU A = %d\n", ALU_A);
     }
     if ( MEMWB.Reg_Wrt && (MEMWB.WB_reg != 0)
         && !( EXMEM.Reg_Wrt && (EXMEM.WB_reg != 0) && (EXMEM.WB_reg == IDEX.reg_RT) )
@@ -657,7 +662,7 @@ void EX()
             ALU_B = MEMWB.ALU_result;
         }
         EXMEM_SHADOW.Reg_RT_val = MEMWB.Data_Mem_result;
-        printf("EX(): Forwarding from MEMWB to RT: ALU B = %d and RT_val = %d\n", ALU_A, EXMEM_SHADOW.Reg_RT_val);
+        //printf("EX(): Forwarding from MEMWB to RT: ALU B = %d and RT_val = %d\n", ALU_A, EXMEM_SHADOW.Reg_RT_val);
     }
 
 	//RegDst Mux
@@ -780,7 +785,7 @@ void EX()
                 }
                 break;
             default:
-                printf("In EX(), Unknown func code for R format => %d\n", IDEX.ALU_Op );
+                //printf("In EX(), Unknown func code for R format => %d\n", IDEX.ALU_Op );
                 exit(-1);
         }
     }
@@ -807,7 +812,7 @@ void EX()
         // Ex lhu $t0, 2($t0) => we want a[2/4] => a[0] and half word (2 >> 1) % 2 = halfword 1 of word 0
         // ex lhu $t0, 6($t0) => a[6/4] => a[1] and halfword is (6 / 2) = 3 % 2 = halfword 1 of word 1
         EXMEM_SHADOW.ALU_result = (ALU_A >> 2) + (ALU_B >> 2);
-        printf("In EX() load/store access = memory[ %d ]\n ", EXMEM_SHADOW.ALU_result);
+        //printf("In EX() load/store access = memory[ %d ]\n ", EXMEM_SHADOW.ALU_result);
         EXMEM_SHADOW.which_byte = (ALU_A + ALU_B) % 4;
         EXMEM_SHADOW.which_half = ((ALU_A + ALU_B) >> 1) % 2;
     }
@@ -835,7 +840,7 @@ void EX()
                 EXMEM_SHADOW.ALU_result = ALU_A < ALU_B;
                 break;
             default:
-                printf("In EX(), failed I instr ALU op");
+                //printf("In EX(), failed I instr ALU op");
                 exit(-1);
         }
     }
@@ -855,7 +860,7 @@ void EX()
 
 int MEM()
 {
-	printf("In Memory stage\n");
+	//printf("In Memory stage\n");
 	unsigned int word = 0;
 	int data_valid = 0;
 
@@ -881,7 +886,7 @@ int MEM()
 		// sw instruction
 		if(EXMEM.OP_Code == 0x2B)
         {
-            printf("In mem! EXMEM.ALU_result = %d\n", EXMEM.ALU_result);
+            //printf("In mem! EXMEM.ALU_result = %d\n", EXMEM.ALU_result);
             write_val = word;
         }
         else if(EXMEM.OP_Code == 0x29)
@@ -937,6 +942,7 @@ int MEM()
         {
             //write to d_cache
             data_valid = dcache_access(0, EXMEM.ALU_result, &write_val);
+
             if(!data_valid)
             {
                 stall_pipe = 1;
@@ -1034,7 +1040,7 @@ int MEM()
 
 void WB()
 {
-    printf("In Write Back stage\n");
+    //printf("In Write Back stage\n");
 
 	//do not write to register $zero
 	if( (MEMWB.Reg_Wrt == 1) && (MEMWB.WB_reg != 0) )
@@ -1082,22 +1088,22 @@ void Update()
     }
 	clock_cycle++;
 
-	printf("v0 = %#010x\n", reg[2]);
-	printf("v1 = %#010x\n", reg[3]);
-	printf("a0 = %d\n", reg[4]);
-	printf("a1 = %d\n", reg[5]);
-	printf("a2 = %d\n", reg[6]);
-    printf("a3 = %d\n\n", reg[7]);
+	//printf("v0 = %#010x\n", reg[2]);
+	//printf("v1 = %#010x\n", reg[3]);
+	//printf("a0 = %d\n", reg[4]);
+	//printf("a1 = %d\n", reg[5]);
+	//printf("a2 = %d\n", reg[6]);
+    //printf("a3 = %d\n\n", reg[7]);
 
-    printf("t0 = %d\n", reg[8]);
-    printf("t1 = %d\n", reg[9]);
-    printf("t2 = %d\n", reg[10]);
-    printf("t3 = %d\n", reg[11]);
-    printf("t4 = %d\n", reg[12]);
-    printf("t5 = %d\n\n", reg[13]);
+    //printf("t0 = %d\n", reg[8]);
+    //printf("t1 = %d\n", reg[9]);
+    //printf("t2 = %d\n", reg[10]);
+    //printf("t3 = %d\n", reg[11]);
+    //printf("t4 = %d\n", reg[12]);
+    //printf("t5 = %d\n\n", reg[13]);
 
-    printf("ra = %d\n", reg[31]);
-	printf("Clock Cycle: %d\n", clock_cycle);
-	printf("The Program Counter = %d\n\n", PC.pc);
-	printf("-------------------------------------------------\n");
+    //printf("ra = %d\n", reg[31]);
+	//printf("Clock Cycle: %d\n", clock_cycle);
+	//printf("The Program Counter = %d\n\n", PC.pc);
+	//printf("-------------------------------------------------\n");
 }

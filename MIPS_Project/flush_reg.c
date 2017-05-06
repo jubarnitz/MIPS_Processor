@@ -9,7 +9,7 @@
 
 void Flush_IF_ID(IF_ID *IFID_ptr)
 {
-	printf("Flushing IF/ID Pipeline Register\n");
+	//printf("Flushing IF/ID Pipeline Register\n");
 	IFID_ptr->PC_Next = 0;
 	IFID_ptr->reg_RS = 0;
 	IFID_ptr->reg_RT = 0;
@@ -23,7 +23,7 @@ void Flush_IF_ID(IF_ID *IFID_ptr)
 
 void Flush_ID_EX(ID_EX *IDEX_ptr)
 {
-	printf("Flushing ID/EX Pipeline Register\n");
+	//printf("Flushing ID/EX Pipeline Register\n");
 	IDEX_ptr->ALU_Src = 0;
 	IDEX_ptr->ALU_Op = 0;
 	IDEX_ptr->Reg_Dst = 0;

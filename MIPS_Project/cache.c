@@ -18,7 +18,7 @@ void init_i_cache()
 	// number of indexes
 	int size = (ICACHE_SIZE / 4) / BLOCK_SIZE;
 	int data_size = (ICACHE_SIZE / 4);
-	printf("The number of indexes in i cache = %d\n", size);
+	//printf("The number of indexes in i cache = %d\n", size);
 
 	for(int i = 0; i < size; i++)
     {
@@ -58,7 +58,7 @@ void init_d_cache()
 	// number of indexes
 	int size = (DCACHE_SIZE / 4) / BLOCK_SIZE;
 	int data_size = (DCACHE_SIZE / 4);
-	printf("The number of indexes in d cache = %d\n", size);
+	//printf("The number of indexes in d cache = %d\n", size);
 
 	for(int i = 0; i < size; i++)
     {
@@ -137,13 +137,13 @@ int icache_access(unsigned int address, unsigned int *data)
     i_block_offset = icache_remainder % BLOCK_SIZE;
     cache_addr = (i_block_index << i_block_offset_bits) + i_block_offset;
 
-    printf("\nIn icache_access()\n");
-    printf("Adddress = %u\n", address);
+    //printf("\nIn icache_access()\n");
+    //printf("Adddress = %u\n", address);
 
     // Cache Hit
     if( (icache_tag == i_cache.tag[i_block_index]) && (i_cache.valid[i_block_index] == 1) )
     {
-        printf("i_cache hit occurred!\n");
+        //printf("i_cache hit occurred!\n");
         icache_hit_count++;
         *data = i_cache.data[cache_addr];
         icache_data_valid = 1;
@@ -151,7 +151,7 @@ int icache_access(unsigned int address, unsigned int *data)
     // Cache Miss -> Make a new request to memory
     else if (!filling_icache)
     {
-        printf("i_cache miss occurred. Creating new request\n");
+        //printf("i_cache miss occurred. Creating new request\n");
         icache_miss_count++;
         filling_icache = 1;
         // Keep track of the new request address
@@ -203,15 +203,20 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
     d_block_offset = dcache_remainder % BLOCK_SIZE;
     cache_addr = (d_block_index << d_block_offset_bits) + d_block_offset;
 
-    printf("\nIn dcache_access()\n");
-    printf("Adddress = %u\n", address);
+    //printf("\nIn dcache_access()\n");
+    //printf("Adddress = %u\n", address);
+//    printf("dcache_tag = %d\n", dcache_tag);
+//    printf("dcache_remainder = %d\n", dcache_remainder);
+//    printf("d_block_index = %d\n", d_block_index);
+//    printf("d_block_offset = %d\n", d_block_offset);
+//    printf("cache_addr = %d\n", cache_addr);
 
     if(read)
     {
         // Cache hit
         if( (dcache_tag == d_cache.tag[d_block_index]) && (d_cache.valid[d_block_index] == 1) )
         {
-            printf("d_cache hit occurred!\n");
+            //printf("d_cache hit occurred!\n");
             dcache_hit_count++;
             *data = d_cache.data[cache_addr];
             dcache_data_valid = 1;
@@ -219,7 +224,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
         // create new request to memory
         else if(!filling_dcache)
         {
-            printf("d_cache miss occurred on read. Creating new request\n");
+            //printf("d_cache miss occurred on read. Creating new request\n");
             dcache_miss_count++;
             filling_dcache = 1;
             // Keep track of the new request address
@@ -234,9 +239,10 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             // If the current block is dirty, save to the write buffer before bring in new block
             if(WRITE_BACK && (d_cache.dirty[dcache_req_index] == 1) && !write_back_to_occur)
             {
-                printf("Data block is dirty. Placing data into write buffer\n");
+                //printf("Data block is dirty. Placing data into write buffer\n");
                 for(int i = 0; i < BLOCK_SIZE; i++)
                 {
+                    //printf("writing %d to write_buffer[%d]\n", d_cache.data[dcache_req_cache_addr + i], i);
                     write_buffer[i] = d_cache.data[dcache_req_cache_addr + i];
                 }
                 write_back_address = (d_cache.tag[dcache_req_index] << d_cache_tag_bits) + (dcache_req_index << d_block_offset_bits);
@@ -245,7 +251,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             // If the write buffer is already full stall the pipe
             else if(WRITE_BACK && write_back_to_occur)
             {
-                printf("Data block is dirty, but write buffer is full, must stall\n");
+                //printf("Data block is dirty, but write buffer is full, must stall\n");
                 return 0;
             }
 
@@ -272,7 +278,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
         // Cache hit
         if( (dcache_tag == d_cache.tag[d_block_index]) && (d_cache.valid[d_block_index] == 1) )
         {
-            printf("Dcache write hit\n");
+            //printf("Dcache write hit\n");
             dcache_hit_count++;
             dcache_req_addr = address; // this was cache_addr
             d_cache.data[cache_addr] = *data;
@@ -280,7 +286,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             if(!WRITE_BACK)
             {
                 // write through
-                printf("d_cache hit occurred on write-through. Creating new request\n");
+                //printf("d_cache hit occurred on write-through. Creating new request\n");
                 filling_dcache = 1;
                 // Keep track of the new request address
                 // on a write-through, don't set the address to the first of the block
@@ -300,7 +306,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
         // data is not in cache have to create a read request from main memory
         else if(!filling_dcache)
         {
-            printf("d_cache miss occurred on write. Creating new request\n");
+            //printf("d_cache miss occurred on write. Creating new request\n");
             dcache_miss_count++;
             filling_dcache = 1;
             // Keep track of the new request address
@@ -315,7 +321,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             // If the current block is dirty, save to the write buffer before bring in new block
             if(WRITE_BACK && (d_cache.dirty[dcache_req_index] == 1) && !write_back_to_occur)
             {
-                printf("Data block is dirty. Placing data into write buffer\n");
+                //printf("Data block is dirty. Placing data into write buffer\n");
                 for(int i = 0; i < BLOCK_SIZE; i++)
                 {
                     write_buffer[i] = d_cache.data[dcache_req_cache_addr + i];
@@ -326,7 +332,7 @@ int dcache_access(int read, unsigned int address, unsigned int *data)
             // If the write buffer is already full stall the pipe
             else if(WRITE_BACK && (d_cache.dirty[dcache_req_index] == 1) && write_back_to_occur)
             {
-                printf("Data block is dirty, but write buffer is full, must stall\n");
+                //printf("Data block is dirty, but write buffer is full, must stall\n");
                 return 0;
             }
 
@@ -355,14 +361,14 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
         // Create a new i cache request
         if( i_cache_Request )
         {
-            printf(" In Memory: Creating new Icache request\n");
+            //printf(" In Memory: Creating new Icache request\n");
             mem_counter = 7;
             mem_handling_icache_req = 1;
         }
         // Create a new dcache request
         else
         {
-            printf(" In Memory: Creating new Dcache request\n");
+            //printf(" In Memory: Creating new Dcache request\n");
             if(read)
             {
                 mem_counter = 8;
@@ -384,20 +390,20 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
             // Penalty has expired. Deliver data
             if( mem_counter == 0)
             {
-                printf("Memory Penalty has expired. Delivering Data to Icache\n");
+                //printf("Memory Penalty has expired. Delivering Data to Icache\n");
                 mem_blksize--;
                 *data = memory[address];
                 data_valid = 1;
                 // Check if all blocks have been filled
                 if( mem_blksize == 0 )
                 {
-                    printf("Memory has filled all blocks of the request\n");
+                    //printf("Memory has filled all blocks of the request\n");
                     mem_handling_icache_req = 0;
                 }
                 // If more blocks to be filled, add penalty of 2
                 else
                 {
-                    printf("Memory adding next block penalty\n");
+                    //printf("Memory adding next block penalty\n");
                     mem_counter = 2;
                 }
             }
@@ -409,20 +415,20 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
         {
             if(read)
             {
-                printf("Memory Penalty has expired. Delivering Data to Dcache\n");
+                //printf("Memory Penalty has expired. Delivering Data to Dcache\n");
                 mem_blksize--;
                 *data = memory[address];
                 data_valid = 1;
                 // Check if all blocks have been filled
                 if( mem_blksize == 0 )
                 {
-                    printf("Memory has filled all blocks of the request\n");
+                    //printf("Memory has filled all blocks of the request\n");
                     mem_handling_dcache_req = 0;
                 }
                 // If more blocks to be filled, add penalty of 2
                 else
                 {
-                    printf("Memory adding next block penalty\n");
+                    //printf("Memory adding next block penalty\n");
                     mem_counter = 2;
                 }
             }
@@ -431,19 +437,19 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
                 // If the req was write_back, it will write the whole block back
                 if(WRITE_BACK)
                 {
-                    printf("Writing write buffer to memory\n");
+                    //printf("Writing write buffer to memory\n");
                     mem_blksize--;
                     memory[address] = *data;
                     data_valid = 1;
                     if( mem_blksize == 0 )
                     {
-                        printf("Memory has filled all blocks of the request\n");
+                        //printf("Memory has filled all blocks of the request\n");
                         mem_handling_dcache_req = 0;
                     }
                     // If more blocks to be filled, add penalty of 2
                     else
                     {
-                        printf("Memory adding next block penalty\n");
+                        //printf("Memory adding next block penalty\n");
                         mem_counter = 2;
                     }
                 }
@@ -453,7 +459,7 @@ int memory_access(int read, unsigned int address, unsigned int *data, int i_cach
                     memory[address] = *data;
                     data_valid = 1;
                     mem_handling_dcache_req = 0;
-                    printf("Write through is complete\n");
+                    //printf("Write through is complete\n");
                     mem_blksize = 0;
                 }
             }
@@ -478,9 +484,9 @@ void icache_update()
     // If icache has not been checked this cycle
     if( filling_icache )
     {
-        printf("In icache update\n");
+        //printf("In icache update\n");
         icache_next_req_addr = icache_req_addr_beginning + icache_blocks_filled;
-        printf("Waiting on data for address: %d\n", icache_next_req_addr);
+        //printf("Waiting on data for address: %d\n", icache_next_req_addr);
 
         // pass to memory access the address of the waiting block offset
         mem_data_valid = memory_access(1, icache_next_req_addr, &mem_data, 1);
@@ -509,9 +515,9 @@ void dcache_update()
     // If icache has not been checked this cycle
     if( filling_dcache )
     {
-        printf("In dcache update\n");
+        //printf("In dcache update\n");
         dcache_next_req_addr = dcache_req_addr_beginning + dcache_blocks_filled;
-        printf("Waiting on data for address: %d\n", dcache_next_req_addr);
+        //printf("Waiting on data for address: %d\n", dcache_next_req_addr);
 
         if(dcache_read_req)
         {
@@ -534,7 +540,7 @@ void dcache_update()
                     // handle write back
                     if(WRITE_BACK && write_back_to_occur)
                     {
-                        printf("In dcache update, setting up write back\n");
+                        //printf("In dcache update, setting up write back\n");
                         //write_back_to_occur = 0;
                         dcache_read_req = 0;
                         filling_dcache = 1;
@@ -550,8 +556,6 @@ void dcache_update()
             {
                 mem_data = d_cache.data[dcache_req_cache_addr];
                 // pass to memory access the address of the waiting block offset
-                // this was passing in a base addr instead of the correct offset addr
-                //mem_data_valid = memory_access(0, dcache_next_req_addr, &mem_data, 0);
                 mem_data_valid = memory_access(0, dcache_req_addr_beginning + dcache_blocks_filled, &mem_data, 0);
                 // memory has data for i cache
                 if(mem_data_valid)
@@ -614,7 +618,7 @@ int RMW_dcache(unsigned int address)
 }
 
 
-/*
+
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000bb8,	//	$sp = 3000
 0x00000bb8,	//	$fp = 3000
@@ -1110,12 +1114,12 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x0f0f0000,
 0x0000e000,
 };
-*/
 
 
 
 
 
+/*
 unsigned int program_image[MEMORY_SIZE] = {
 0x00000898,	// $sp = 2200
 0x00000898,	// $fp = 2200
@@ -1390,4 +1394,4 @@ unsigned int program_image[MEMORY_SIZE] = {
 0x65736172,   // 	esar
 0x00000000,   // 	nop
 };
-
+*/
